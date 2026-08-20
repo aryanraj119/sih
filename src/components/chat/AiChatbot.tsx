@@ -102,11 +102,11 @@ export const AiChatbot = () => {
   };
 
   return (
-    <div className="fixed bottom-6 right-6 z-50 flex flex-col items-end">
+    <div className="fixed bottom-6 right-6 z-50 pointer-events-none flex flex-col items-end">
       
       {/* Floating Chat Modal Drawer */}
       {isOpen && (
-        <div className="mb-4 w-[360px] sm:w-[420px] h-[520px] liquid-glass rounded-2xl border border-cyan-500/40 bg-black/95 text-white shadow-2xl flex flex-col overflow-hidden animate-fadeIn backdrop-blur-xl">
+        <div className="pointer-events-auto mb-4 w-[360px] sm:w-[420px] h-[520px] liquid-glass rounded-2xl border border-cyan-500/40 bg-black/95 text-white shadow-2xl flex flex-col overflow-hidden animate-fadeIn backdrop-blur-xl">
           
           {/* Drawer Header */}
           <div className="p-4 bg-cyan-950/60 border-b border-white/10 flex items-center justify-between">
@@ -206,7 +206,7 @@ export const AiChatbot = () => {
       )}
 
       {/* Floating Trigger Button using GlowButton */}
-      <div className="flex items-center gap-2">
+      <div className="pointer-events-auto flex items-center gap-2">
         <GlowButton onClick={() => setIsOpen(!isOpen)}>
           <div className="flex items-center gap-1.5">
             <Sparkles className="w-4 h-4 text-cyan-400 animate-pulse" />

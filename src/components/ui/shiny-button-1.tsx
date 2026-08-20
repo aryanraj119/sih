@@ -15,9 +15,9 @@ const GlowButton = ({ children = 'AI CHATBOT', onClick, className = '' }: GlowBu
   };
 
   return (
-    <div className={`relative group ${className}`}>
+    <div className={`relative group pointer-events-auto ${className}`}>
       {/* SVG Filters */}
-      <svg style={{ position: 'absolute', width: 0, height: 0 }}>
+      <svg style={{ position: 'absolute', width: 0, height: 0, pointerEvents: 'none' }}>
         <filter width="300%" x="-100%" height="300%" y="-100%" id={filters.unopaq}>
           <feColorMatrix values="1 0 0 0 0 0 1 0 0 0 0 0 1 0 0 0 0 0 9 0" />
         </filter>
@@ -33,11 +33,8 @@ const GlowButton = ({ children = 'AI CHATBOT', onClick, className = '' }: GlowBu
       <button
         onClick={onClick}
         aria-label="Open AI Chatbot"
-        className="absolute inset-0 w-full h-full z-30 outline-none border-none cursor-pointer opacity-0"
+        className="absolute inset-0 w-full h-full z-30 outline-none border-none cursor-pointer opacity-0 pointer-events-auto"
       />
-
-      {/* Backdrop */}
-      <div className="absolute dark:inset-[-9900%] dark:bg-[radial-gradient(circle_at_50%_50%,#0000_0,#0000_20%,#111111aa_50%)] bg-[length:3px_3px] -z-10" />
 
       {/* Button Container */}
       <div className="relative pointer-events-none">

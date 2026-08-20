@@ -16,11 +16,12 @@ from backend.forecasting.solar_provider import DemoSolarProvider
 from backend.forecasting.duck_curve_engine import DuckCurveEngine
 from backend.forecasting.ramp_engine import RampEngine
 from backend.forecasting.grid_stress_engine import GridStressEngine
+from backend.forecasting.chatbot_engine import URJADRISHTIChatbotEngine
 
 app = FastAPI(
     title="URJADRISHTI API",
-    description="AI-Powered Energy Intelligence for Delhi powered by OpenSTEF",
-    version="0.4.0"
+    description="AI-Powered Energy Intelligence for Delhi powered by OpenSTEF & Gemini AI",
+    version="0.5.0"
 )
 
 # Enable CORS for local development
@@ -49,6 +50,7 @@ forecast_service = CentralForecastService(
 regional_engine = RegionalEngine(data_generator=data_generator)
 solar_provider = DemoSolarProvider(capacity_mw=1200.0)
 duck_curve_engine = DuckCurveEngine(solar_provider=solar_provider, data_generator=data_generator)
+chatbot_engine = URJADRISHTIChatbotEngine()
 
 FORECAST_CACHE: Dict[str, Any] = {}
 
@@ -58,18 +60,23 @@ class ScenarioRequest(BaseModel):
     solar_capacity_mw: int = 1000   # Installed rooftop solar MW
     gdp_growth_pct: float = 6.0     # Annual GDP growth %
 
+class ChatRequest(BaseModel):
+    message: str
+    history: Optional[List[Dict[str, str]]] = None
+
 @app.get("/")
 @app.get("/api/health")
 def health_check():
     demo_mode = os.getenv("DEMO_MODE", "true").lower() == "true"
     return {
         "status": "ok",
-        "version": "0.4.0",
+        "version": "0.5.0",
         "data_mode": "demo" if demo_mode else "live",
         "forecasting_service_status": "ready",
         "spatial_intelligence": "ready",
         "solar_grid_intelligence": "ready",
-        "framework": "OpenSTEF Adapter + Solar Duck Curve Engine",
+        "gemini_chatbot": "ready",
+        "framework": "OpenSTEF Adapter + Gemini AI Chat Engine",
     }
 
 @app.get("/api/model-status")
@@ -215,8 +222,6 @@ def get_grid_stress(horizon: str = Query("day_ahead")):
     max_ramp_h = duck["maximum_evening_ramp_mw_per_hour"]
     peak_info = forecast_service.get_peak_forecast(horizon)
     peak_mw = peak_info.get("peak_demand_mw", 7820.0)
-
-    # Max instantaneous solar penetration
     max_penetration = max(p.get("solar_penetration_pct", 0.0) for p in duck["points"]) if duck["points"] else 14.5
 
     stress = GridStressEngine.calculate_stress_score(
@@ -257,12 +262,20 @@ def get_solar_grid_summary(horizon: str = Query("day_ahead")):
         "solar_penetration_percent": penetration_pct,
         "forecast_peak_mw": peak_mw,
         "maximum_evening_ramp_mw_per_hour": ramps["maximum_upward_ramp_mw_per_hour"],
-        "potential_solar_surplus_mw": 0.0,  # 0 MW indicative surplus during evening peak
+        "potential_solar_surplus_mw": 0.0,
         "grid_stress_score": stress["grid_stress_score"],
         "grid_stress_level": stress["grid_stress_level"],
         "grid_stress_explanation": stress["explanation"],
         "data_mode": "DEMO_MODE",
     }
+
+# ==================== GEMINI AI CHATBOT API ====================
+
+@app.post("/api/chat")
+def chat_with_urjadrishti(req: ChatRequest):
+    if not req.message or not req.message.strip():
+        raise HTTPException(status_code=400, detail="Message string cannot be empty.")
+    return chatbot_engine.generate_response(message=req.message, history=req.history)
 
 @app.get("/api/model-performance")
 def get_model_performance():

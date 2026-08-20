@@ -4,6 +4,17 @@ dist
 dist-ssr
 *.local
 
+# Local Secrets & Environment
+.env
+.env.local
+.env.*.local
+
+# Datasets & Zip archives
+*.zip
+fire detection dataset/
+dataset/
+data/*.zip
+
 # Python
 __pycache__/
 *.pyc

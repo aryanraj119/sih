@@ -9,7 +9,6 @@ import type {
 
 export * from './api/index';
 
-// Mock Delhi SLDC Live Grid Status
 export const getLiveDelhiGridStatus = () => {
   return {
     currentLoadMW: 6485,

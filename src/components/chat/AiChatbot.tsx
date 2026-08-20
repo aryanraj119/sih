@@ -1,7 +1,7 @@
 import { useState, useRef, useEffect } from 'react';
 import { GlowButton } from '../ui/shiny-button-1';
 import { Bot, Send, X, Sparkles, RefreshCw } from 'lucide-react';
-import { fetchForecast, fetchRegionsSummary, fetchDuckCurveData, fetchModelTelemetry } from '../../services/api';
+import { sendChatMessage } from '../../services/api';
 
 interface Message {
   id: string;
@@ -18,7 +18,7 @@ export const AiChatbot = () => {
     {
       id: 'welcome-1',
       sender: 'ai',
-      text: 'Namaste! I am URJADRISHTI AI — Delhi\'s Power Intelligence Assistant. Ask me anything about demand forecasts, peak projections, OpenSTEF accuracy, or regional grid stress!',
+      text: 'Namaste! I am URJADRISHTI AI — Delhi\'s Power Intelligence Assistant powered by Gemini. Ask me anything about real-time load, OpenSTEF accuracy, Duck Curve net load, 5-Year regional growth, or climate stress scenarios!',
       timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
     },
   ]);
@@ -40,6 +40,7 @@ export const AiChatbot = () => {
     'Show South Delhi risk score & rationale',
     'Explain the 24-Hour Duck Curve',
     'What is OpenSTEF MAPE accuracy?',
+    'Simulate +4°C heatwave impact',
   ];
 
   const handleSend = async (queryText?: string) => {
@@ -58,30 +59,21 @@ export const AiChatbot = () => {
     setIsTyping(true);
 
     try {
-      const lower = textToSend.toLowerCase();
-      let aiResponseText = '';
+      // Build conversation history format for API
+      const historyPayload = messages.map((m) => ({
+        sender: m.sender,
+        text: m.text,
+      }));
 
-      if (lower.includes('peak') || lower.includes('forecast')) {
-        const res = await fetchForecast('day_ahead');
-        const peakMW = res.data ? Math.max(...res.data.map((d) => d.predictedMW)) : 7820;
-        aiResponseText = `Based on OpenSTEF Day-Ahead Machine Learning models, Delhi's forecast peak load is expected to reach **${peakMW.toLocaleString()} MW** at 15:30 today during the afternoon air-conditioning surge. P10-P90 uncertainty bounds range from ${(peakMW * 0.96).toFixed(0)} MW to ${(peakMW * 1.04).toFixed(0)} MW.`;
-      } else if (lower.includes('south delhi') || lower.includes('risk') || lower.includes('spatial')) {
-        const summary = await fetchRegionsSummary();
-        aiResponseText = `South Delhi (BRPL Corridor) currently exhibits a URJADRISHTI Risk Score of **${summary.data?.highest_risk_score ?? 68.4} (${summary.data?.highest_risk_level ?? 'HIGH'})**. Rationale: High forecast peak demand (2,070 MW) combined with above-average 5-Year CAGR growth (+7.5%) approaching substation capacity limits.`;
-      } else if (lower.includes('duck') || lower.includes('solar') || lower.includes('ramp')) {
-        const duck = await fetchDuckCurveData('day_ahead');
-        aiResponseText = `The 24-Hour Duck Curve shows net load dropping to a minimum trough ("Duck Belly") of **${duck.data?.net_load_minimum_mw ?? 4820} MW** at 13:00 under 950 MW rooftop solar output. The evening ramp rate reaches **+${duck.data?.maximum_evening_ramp_mw_per_hour ?? 2712} MW/h** between 17:30 and 20:30.`;
-      } else if (lower.includes('mape') || lower.includes('accuracy') || lower.includes('model') || lower.includes('openstef')) {
-        const telem = await fetchModelTelemetry();
-        aiResponseText = `OpenSTEF ML Predictor Performance: Mean Absolute Percentage Error (MAPE) is **${telem.data?.mapePercent ?? telem.data?.mape ?? 1.38}%**, Mean Absolute Error (MAE) is **${telem.data?.maeMW ?? telem.data?.mae ?? 84.2} MW**, and P10-P90 confidence coverage is **${telem.data?.p10P90CoveragePct ?? 94.8}%**. Primary feature driver: Outdoor Temperature (°C) at 38.5% SHAP attribution.`;
-      } else {
-        aiResponseText = `URJADRISHTI is currently monitoring Delhi's total grid load at 6,485 MW with optimal frequency at 50.02 Hz. You can explore regional risk scores on the /power-intelligence tab or simulate climate heatwaves on the /simulator tab.`;
-      }
+      const response = await sendChatMessage(textToSend, historyPayload);
+
+      const aiText = response.data?.response || 
+        'URJADRISHTI is currently monitoring Delhi\'s total grid load at 6,485 MW (P10-P90: 7,500 MW - 8,130 MW).';
 
       const aiMsg: Message = {
         id: `ai-${Date.now()}`,
         sender: 'ai',
-        text: aiResponseText,
+        text: aiText,
         timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
       };
 
@@ -92,7 +84,7 @@ export const AiChatbot = () => {
         {
           id: `ai-err-${Date.now()}`,
           sender: 'ai',
-          text: 'I am currently operating in offline fallback mode. Peak load forecast is estimated at 7,820 MW with 1.38% MAPE accuracy.',
+          text: 'I am currently operating in offline fallback mode. Day-ahead forecast peak is estimated at 7,820 MW with 1.38% MAPE accuracy.',
           timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
         },
       ]);
@@ -106,7 +98,7 @@ export const AiChatbot = () => {
       
       {/* Floating Chat Modal Drawer */}
       {isOpen && (
-        <div className="pointer-events-auto mb-4 w-[360px] sm:w-[420px] h-[520px] liquid-glass rounded-2xl border border-cyan-500/40 bg-black/95 text-white shadow-2xl flex flex-col overflow-hidden animate-fadeIn backdrop-blur-xl">
+        <div className="pointer-events-auto mb-4 w-[360px] sm:w-[440px] h-[540px] liquid-glass rounded-2xl border border-cyan-500/40 bg-black/95 text-white shadow-2xl flex flex-col overflow-hidden animate-fadeIn backdrop-blur-xl">
           
           {/* Drawer Header */}
           <div className="p-4 bg-cyan-950/60 border-b border-white/10 flex items-center justify-between">
@@ -118,10 +110,10 @@ export const AiChatbot = () => {
                 <div className="flex items-center gap-1.5">
                   <h3 className="font-bold text-sm text-white tracking-tight">URJADRISHTI AI</h3>
                   <span className="px-1.5 py-0.2 text-[9px] font-bold rounded bg-emerald-950 text-emerald-300 border border-emerald-500/40 uppercase">
-                    OpenSTEF
+                    Gemini AI
                   </span>
                 </div>
-                <p className="text-[11px] text-gray-400">Delhi Energy Intelligence Assistant</p>
+                <p className="text-[11px] text-gray-400">Delhi Energy Intelligence & Multi-Horizon Assistant</p>
               </div>
             </div>
 
@@ -142,9 +134,9 @@ export const AiChatbot = () => {
                 className={`flex flex-col ${msg.sender === 'user' ? 'items-end' : 'items-start'}`}
               >
                 <div
-                  className={`max-w-[85%] p-3 rounded-2xl leading-relaxed ${
+                  className={`max-w-[88%] p-3.5 rounded-2xl leading-relaxed whitespace-pre-wrap ${
                     msg.sender === 'user'
-                      ? 'bg-cyan-600 text-white rounded-br-none shadow-lg'
+                      ? 'bg-cyan-600 text-white rounded-br-none shadow-lg font-medium'
                       : 'bg-white/10 text-gray-200 border border-white/10 rounded-bl-none'
                   }`}
                 >
@@ -155,9 +147,9 @@ export const AiChatbot = () => {
             ))}
 
             {isTyping && (
-              <div className="flex items-center gap-2 text-cyan-400 text-xs p-2 rounded-xl bg-white/5 w-max animate-pulse">
+              <div className="flex items-center gap-2 text-cyan-400 text-xs p-2.5 rounded-xl bg-white/5 w-max animate-pulse">
                 <RefreshCw className="w-3.5 h-3.5 animate-spin" />
-                <span>URJADRISHTI AI is computing telemetry...</span>
+                <span>URJADRISHTI Gemini AI is analyzing telemetry & horizons...</span>
               </div>
             )}
 
@@ -191,12 +183,12 @@ export const AiChatbot = () => {
               value={input}
               onChange={(e) => setInput(e.target.value)}
               placeholder="Ask URJADRISHTI AI..."
-              className="flex-1 px-3 py-2 rounded-xl bg-white/5 border border-white/10 text-xs text-white placeholder-gray-500 focus:outline-none focus:border-cyan-500 transition-colors"
+              className="flex-1 px-3.5 py-2.5 rounded-xl bg-white/5 border border-white/10 text-xs text-white placeholder-gray-500 focus:outline-none focus:border-cyan-500 transition-colors"
             />
             <button
               type="submit"
               disabled={!input.trim()}
-              className="p-2 rounded-xl bg-cyan-500 hover:bg-cyan-400 disabled:opacity-40 text-black transition-colors cursor-pointer"
+              className="p-2.5 rounded-xl bg-cyan-500 hover:bg-cyan-400 disabled:opacity-40 text-black font-bold transition-colors cursor-pointer"
             >
               <Send className="w-4 h-4" />
             </button>

@@ -14,13 +14,28 @@ URJADRISHTI is an enterprise-grade AI energy intelligence platform designed for 
       ┌────────────────────────────────┼────────────────────────────────┐
       │                                │                                │
       ▼                                ▼                                ▼
-AI Forecasting Layer           Spatial Intelligence            Scenario & Solar
- (OpenSTEF ML Engine)         (9 Analytical Regions)            (Duck Curve / BESS)
+AI Forecasting Layer           Spatial Intelligence            Solar & Grid Intelligence
+ (OpenSTEF ML Engine)         (9 Analytical Regions)            (24-Hour Duck Curve Net Load)
       │                                │                                │
-      ├─ Short-Term (15m–6h)           ├─ Risk Engine (0-100)          ├─ Duck Curve Net Load
-      ├─ Day-Ahead (1–7d ⭐)           ├─ Metric Map Modes             ├─ Heatwave Sandbox
-      └─ Long-Term (1–5y)              └─ Grid Attention System        └─ BESS Dispatch
+      ├─ Short-Term (15m–6h)           ├─ Risk Engine (0-100)          ├─ Net Load = Demand - Solar
+      ├─ Day-Ahead (1–7d ⭐)           ├─ Metric Map Modes             ├─ Evening Ramp (+2,712 MW/h)
+      └─ Long-Term (1–5y)              └─ Grid Attention System        └─ Grid Stress Score (0-100)
 ```
+
+---
+
+## ☀️ Phase 4: Solar & Grid Intelligence Architecture
+
+The `/solar-grid` dashboard models the interaction between rooftop solar adoption and Delhi grid load:
+
+$$\text{Net Load} = \text{Gross Electricity Demand} - \text{Solar Generation}$$
+
+### Key Components:
+1. **Diurnal Solar Generation Model**: Diurnal bell curve peaking at ~950 MW between 12:00 and 14:00, declining rapidly to 0 MW at night (19:00 - 05:00).
+2. **24-Hour Duck Curve & Net Load Trough**: Midday minimum net load ("Duck Belly") dropping to 4,820 MW at 13:00.
+3. **Evening Ramp Engine**: Tracks steep upward net-load ramping (**+2,712 MW/h** / **+45.2 MW/min**) between 17:30 and 20:30 as solar output collapses while evening residential AC load surges.
+4. **Indicative Solar Surplus / Curtailment**: Calculates `potential_surplus = max(0, solar - demand)` indicative pressure.
+5. **URJADRISHTI Grid Stress Score (0–100)**: Combines peak load pressure, evening ramp rates, solar penetration volatility, and forecast uncertainty.
 
 ---
 
@@ -42,19 +57,6 @@ The `/power-intelligence` dashboard provides geographic energy awareness across 
 
 ---
 
-## ⚡ URJADRISHTI Regional Risk Engine
-
-The **URJADRISHTI Regional Risk Score (0–100)** provides explainable planning indicators for grid transformer and feeder asset management:
-
-$$\text{Risk Score} = \text{Utilisation Pressure} + \text{Growth Pressure} + \text{Ramp Pressure} + \text{Solar Volatility}$$
-
-- **0 – 24 (LOW)**: Stable grid load, high capacity headroom, minimal ramping volatility.
-- **25 – 49 (MODERATE)**: Moderate demand growth, manageable evening ramp rates.
-- **50 – 74 (HIGH)**: Elevated forecast peak load approaching substation thermal limits.
-- **75 – 100 (CRITICAL)**: Severe peak capacity pressure combined with rapid growth and ramp rates.
-
----
-
 ## 📡 REST API Endpoints
 
 ### 🔮 Forecasting APIs
@@ -63,6 +65,15 @@ $$\text{Risk Score} = \text{Utilisation Pressure} + \text{Growth Pressure} + \te
 - `GET /api/forecast?horizon={short_term|day_ahead|long_term}` — Forecast demand curve & P10/P50/P90 confidence bounds
 - `GET /api/forecast/peak?horizon={short_term|day_ahead|long_term}` — Peak demand predictions & time
 - `GET /api/model-performance` — MAE, MAPE, RMSE, feature importance weights
+
+### ☀️ Solar & Duck Curve APIs (Phase 4)
+- `GET /api/solar/current` — Current rooftop solar generation MW & capacity factor %
+- `GET /api/solar/forecast` — Solar generation curve across horizons
+- `GET /api/solar/regional` — Solar capacity & generation breakdown across 9 Delhi regions
+- `GET /api/duck-curve` — 24-Hour Duck Curve net load points, solar peak, trough minimum, ramp window
+- `GET /api/ramp` — Upward/downward ramp rates in MW/h and MW/min
+- `GET /api/grid-stress` — URJADRISHTI Grid Stress Score (0–100), level, and explainable rationale
+- `GET /api/solar-grid/summary` — Solar & Grid KPI aggregate summary metrics
 
 ### 🗺️ Spatial & Regional APIs (Phase 3)
 - `GET /api/regions` — All 9 analytical regions with load, peak, growth %, risk score & rationale
@@ -80,7 +91,7 @@ $$\text{Risk Score} = \text{Utilisation Pressure} + \text{Growth Pressure} + \te
 ## 🛡️ Data Integrity & Limitations
 
 > [!IMPORTANT]
-> **Data Integrity Notice**: Regional visualizations currently use **analytical / demo geographies** (`ANALYTICAL REGIONAL VIEW`) where verified electrical network GIS data is not available. The platform explicitly labels all synthetic telemetry as **`DEMO MODE (SYNTHETIC DATA)`**. Verified live SLDC and DISCOM GIS feeds can be connected seamlessly through the modular `LoadDataProvider` and `RegionalGeoProvider` interface layer.
+> **Data Integrity Notice**: Regional visualizations currently use **analytical / demo geographies** (`ANALYTICAL REGIONAL VIEW`) where verified electrical network GIS data is not available. The platform explicitly labels all synthetic telemetry as **`DEMO MODE (SYNTHETIC DATA)`**. Verified live SLDC and DISCOM GIS feeds can be connected seamlessly through the modular `LoadDataProvider`, `SolarDataProvider`, and `RegionalGeoProvider` interface layer.
 
 ---
 
@@ -99,6 +110,9 @@ python -m backend.tests.test_forecasting
 
 # Run Phase 3 spatial grid intelligence tests
 python -m backend.tests.test_phase3_spatial
+
+# Run Phase 4 solar & Duck Curve net load tests
+python -m backend.tests.test_phase4_solar_grid
 ```
 
 ### 3. Frontend Web Client

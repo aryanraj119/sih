@@ -1,21 +1,30 @@
 """
 URJADRISHTI — Gemini AI Chatbot Engine
-Integrates Gemini API with complete URJADRISHTI multi-horizon parameters, OpenSTEF ML telemetry, spatial intelligence, and Duck Curve net load context.
+Integrates Google Gemini API (gemini-3.6-flash) with complete URJADRISHTI multi-horizon parameters, OpenSTEF ML telemetry, spatial intelligence, and Duck Curve net load context.
 """
 
 import os
 import json
+import warnings
 import urllib.request
 import urllib.error
 from typing import Dict, Any, List
+from dotenv import load_dotenv
+
+# Suppress SDK deprecation warnings
+warnings.filterwarnings("ignore")
+
+# Load environment variables
+load_dotenv()
 
 class URJADRISHTIChatbotEngine:
     """
-    AI Chatbot Engine powered by Gemini REST API and enriched with URJADRISHTI operational telemetry.
+    AI Chatbot Engine powered by Gemini REST API (gemini-3.6-flash) and enriched with URJADRISHTI operational telemetry.
     """
 
     def __init__(self, api_key: str = None):
         self.api_key = api_key or os.getenv("GEMINI_API_KEY", "")
+        self.candidate_models = ["gemini-3.6-flash", "gemini-3.5-flash", "gemini-flash-latest"]
 
     def build_system_context(self) -> Dict[str, Any]:
         """Gathers complete parameters across real-time, historical, weather, solar, model, spatial, and growth categories."""
@@ -105,8 +114,7 @@ class URJADRISHTIChatbotEngine:
 
     def generate_response(self, message: str, history: List[Dict[str, str]] = None) -> Dict[str, Any]:
         """
-        Routes the question to the appropriate horizon (Horizon 1: 15m-6h, Horizon 2: 1-7d, Horizon 3: 1-5y)
-        and calls the Gemini API to produce an authoritative natural language explanation.
+        Routes the question to the appropriate horizon and calls the Gemini API (gemini-3.6-flash) to produce an authoritative natural language explanation.
         """
         ctx = self.build_system_context()
 
@@ -120,7 +128,7 @@ class URJADRISHTIChatbotEngine:
             classified_horizon = "Horizon 2: Power Procurement & Scheduling (1 – 7 Days ⭐ PRIMARY)"
 
         system_instruction = (
-            "You are URJADRISHTI AI (ऊर्जादृष्टि), an expert AI power intelligence assistant for Delhi. "
+            "You are URJADRISHTI AI (ऊर्जादृष्टि), an expert AI power intelligence assistant for Delhi powered by Gemini. "
             "You must determine whether user queries relate to: "
             "1) Horizon 1: Operational Awareness (15m–6h)\n"
             "2) Horizon 2: Power Procurement & Scheduling (1–7d ⭐)\n"
@@ -131,56 +139,61 @@ class URJADRISHTIChatbotEngine:
 
         prompt_payload = f"System Context:\n{json.dumps(ctx, indent=2)}\n\nClassified Horizon: {classified_horizon}\n\nUser Question: {message}"
 
-        if not self.api_key:
-            fallback_response = (
-                f"**[{classified_horizon}]**\n\n"
-                f"Based on URJADRISHTI OpenSTEF machine learning models (v2.4.0, MAPE {ctx['openstef_model_telemetry']['mape_percent']}%), "
-                f"Delhi's current grid demand is **{ctx['operational_telemetry']['current_electricity_demand_mw']} MW** with day-ahead peak forecast reaching **{ctx['operational_telemetry']['daily_peak_demand_mw']} MW** (P10-P90: 7,500 MW to 8,130 MW). "
-                f"Rooftop solar generation peaks at 950 MW, causing a net load trough of 4,820 MW at 13:00 followed by an evening ramp rate of {ctx['operational_telemetry']['demand_ramp_up_mw_min']}. "
-                f"Highest regional risk: South Delhi (Risk Score 68.4 HIGH)."
-            )
-            return {
-                "classified_horizon": classified_horizon,
-                "response": fallback_response,
-                "model_used": "local-fallback",
-                "status": "fallback"
-            }
+        # 1. Try google.generativeai SDK first
+        if self.api_key:
+            try:
+                import google.generativeai as genai
+                genai.configure(api_key=self.api_key)
+                model = genai.GenerativeModel("gemini-3.6-flash")
+                response = model.generate_content(f"{system_instruction}\n\n{prompt_payload}")
+                if response and response.text:
+                    return {
+                        "classified_horizon": classified_horizon,
+                        "response": response.text,
+                        "model_used": "Gemini AI (gemini-3.6-flash)",
+                        "status": "success"
+                    }
+            except Exception:
+                pass
 
-        try:
-            url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key={self.api_key}"
-            req_data = {
-                "contents": [
-                    {
-                        "parts": [
-                            {"text": f"{system_instruction}\n\n{prompt_payload}"}
+            # 2. Try REST API candidate models loop
+            for model_name in self.candidate_models:
+                try:
+                    url = f"https://generativelanguage.googleapis.com/v1beta/models/{model_name}:generateContent?key={self.api_key}"
+                    req_data = {
+                        "contents": [
+                            {
+                                "parts": [
+                                    {"text": f"{system_instruction}\n\n{prompt_payload}"}
+                                ]
+                            }
                         ]
                     }
-                ]
-            }
-            req_bytes = json.dumps(req_data).encode("utf-8")
-            req = urllib.request.Request(url, data=req_bytes, headers={"Content-Type": "application/json"})
+                    req_bytes = json.dumps(req_data).encode("utf-8")
+                    req = urllib.request.Request(url, data=req_bytes, headers={"Content-Type": "application/json"})
 
-            with urllib.request.urlopen(req, timeout=10) as resp:
-                res_body = json.loads(resp.read().decode("utf-8"))
-                text_out = res_body["candidates"][0]["content"]["parts"][0]["text"]
-                return {
-                    "classified_horizon": classified_horizon,
-                    "response": text_out,
-                    "model_used": "gemini-1.5-flash",
-                    "status": "success"
-                }
-        except Exception as e:
-            fallback_response = (
-                f"**[{classified_horizon}]**\n\n"
-                f"Based on URJADRISHTI OpenSTEF machine learning models (v2.4.0, MAPE {ctx['openstef_model_telemetry']['mape_percent']}%), "
-                f"Delhi's current grid demand is **{ctx['operational_telemetry']['current_electricity_demand_mw']} MW** with day-ahead peak forecast reaching **{ctx['operational_telemetry']['daily_peak_demand_mw']} MW** (P10-P90: 7,500 MW to 8,130 MW). "
-                f"Rooftop solar generation peaks at 950 MW, causing a net load trough of 4,820 MW at 13:00 followed by an evening ramp rate of {ctx['operational_telemetry']['demand_ramp_up_mw_min']}. "
-                f"Highest regional risk: South Delhi (Risk Score 68.4 HIGH)."
-            )
-            return {
-                "classified_horizon": classified_horizon,
-                "response": fallback_response,
-                "model_used": "local-fallback",
-                "status": "fallback",
-                "error": str(e)
-            }
+                    with urllib.request.urlopen(req, timeout=12) as resp:
+                        res_body = json.loads(resp.read().decode("utf-8"))
+                        text_out = res_body["candidates"][0]["content"]["parts"][0]["text"]
+                        return {
+                            "classified_horizon": classified_horizon,
+                            "response": text_out,
+                            "model_used": f"Gemini AI ({model_name})",
+                            "status": "success"
+                        }
+                except Exception:
+                    continue
+
+        fallback_response = (
+            f"**[{classified_horizon}]**\n\n"
+            f"Based on URJADRISHTI OpenSTEF machine learning models (v2.4.0, MAPE {ctx['openstef_model_telemetry']['mape_percent']}%), "
+            f"Delhi's current grid demand is **{ctx['operational_telemetry']['current_electricity_demand_mw']} MW** with day-ahead peak forecast reaching **{ctx['operational_telemetry']['daily_peak_demand_mw']} MW** (P10-P90: 7,500 MW to 8,130 MW). "
+            f"Rooftop solar generation peaks at 950 MW, causing a net load trough of 4,820 MW at 13:00 followed by an evening ramp rate of {ctx['operational_telemetry']['demand_ramp_up_mw_min']}. "
+            f"Highest regional risk: South Delhi (Risk Score 68.4 HIGH)."
+        )
+        return {
+            "classified_horizon": classified_horizon,
+            "response": fallback_response,
+            "model_used": "local-fallback",
+            "status": "fallback"
+        }

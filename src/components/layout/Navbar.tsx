@@ -3,7 +3,6 @@ import { NavLink, useLocation } from 'react-router-dom';
 import { getLiveDelhiGridStatus } from '../../services/api';
 import { DataModeBadge } from '../dashboard/DataModeBadge';
 import { useDate } from '../../context/DateContext';
-import { UrjadrishtiLogoIcon } from '../common/UrjadrishtiLogoIcon';
 import { Menu, X, Activity, Calendar } from 'lucide-react';
 
 export const Navbar = () => {
@@ -64,23 +63,20 @@ export const Navbar = () => {
 
   return (
     <header className="w-full px-4 md:px-8 lg:px-12 pt-4 relative z-50">
-      <nav className="liquid-glass rounded-2xl px-5 py-3 flex items-center justify-between border border-white/10 shadow-2xl">
+      <nav className="liquid-glass rounded-2xl px-5 py-2.5 flex items-center justify-between border border-white/10 shadow-2xl">
         
-        {/* Official URJADRISHTI Brand Logo & Tag */}
-        <NavLink to="/" className="flex items-center gap-3 group shrink-0">
-          <div className="h-11 px-2.5 py-1 rounded-xl bg-black/80 flex items-center justify-center border border-cyan-500/50 shadow-lg shadow-cyan-500/20 group-hover:scale-105 transition-transform">
-            <UrjadrishtiLogoIcon className="h-8 w-auto object-contain" />
-          </div>
-          <div className="flex flex-col">
-            <div className="flex items-baseline gap-2">
-              <span className="text-lg font-extrabold tracking-tight text-white group-hover:text-cyan-400 transition-colors">
-                URJADRISHTI
-              </span>
-              <span className="text-xs font-semibold text-cyan-400/90 tracking-widest uppercase">
-                ऊर्जादृष्टि
-              </span>
-            </div>
-            <span className="text-[9px] text-gray-400 tracking-wider uppercase">
+        {/* EXACT OFFICIAL URJADRISHTI LOGO IMAGE BRAND */}
+        <NavLink to="/" className="flex items-center gap-2 group shrink-0">
+          <img
+            src="/urjadrishti_logo.png"
+            alt="URJADRISHTI Logo"
+            className="h-12 md:h-14 w-auto object-contain group-hover:scale-105 transition-transform drop-shadow-[0_0_15px_rgba(6,182,212,0.5)]"
+          />
+          <div className="hidden sm:flex flex-col border-l border-white/15 pl-3 ml-1 justify-center">
+            <span className="text-xs font-bold text-cyan-400 tracking-widest uppercase">
+              ऊर्जादृष्टि
+            </span>
+            <span className="text-[8px] text-gray-400 tracking-wider uppercase">
               Predict. Prepare. Power Delhi.
             </span>
           </div>

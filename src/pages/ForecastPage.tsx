@@ -12,7 +12,9 @@ import {
   Legend,
   ResponsiveContainer,
 } from 'recharts';
-import { Zap, Cpu, Compass, Activity, Thermometer, ShieldAlert, ArrowUpRight } from 'lucide-react';
+import { Activity, ShieldAlert } from 'lucide-react';
+import { ForecastHorizonSelector } from '../components/dashboard/ForecastHorizonSelector';
+import { DataModeBadge } from '../components/dashboard/DataModeBadge';
 
 export const ForecastPage = () => {
   const [activeHorizon, setActiveHorizon] = useState<ForecastHorizon>('day_ahead');
@@ -22,116 +24,135 @@ export const ForecastPage = () => {
     setData(getForecastData(activeHorizon));
   }, [activeHorizon]);
 
-  // Calculate metrics based on current horizon data
   const maxDemand = data.length > 0 ? Math.max(...data.map((d) => d.predictedMW)) : 0;
-  const minDemand = data.length > 0 ? Math.min(...data.map((d) => d.predictedMW)) : 0;
-  const avgTemp = data.length > 0 ? (data.reduce((acc, curr) => acc + curr.temperature, 0) / data.length).toFixed(1) : '0';
+  const avgDemand = data.length > 0 ? Math.round(data.reduce((acc, curr) => acc + curr.predictedMW, 0) / data.length) : 0;
+  const peakTime = data.length > 0 ? data.reduce((prev, curr) => (curr.predictedMW > prev.predictedMW ? curr : prev)).time : '15:30';
 
   return (
     <div className="w-full min-h-screen bg-black text-white px-4 md:px-8 lg:px-12 pt-8 pb-16">
       
       {/* Header Banner */}
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-8">
+      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-6">
         <div>
-          <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-cyan-950/60 border border-cyan-500/30 text-cyan-300 text-xs font-semibold uppercase tracking-wider mb-2">
-            <Activity className="w-3.5 h-3.5 text-cyan-400" />
-            AI Demand Engine
+          <div className="flex items-center gap-2 mb-2">
+            <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-cyan-950/60 border border-cyan-500/30 text-cyan-300 text-xs font-semibold uppercase tracking-wider">
+              <Activity className="w-3.5 h-3.5 text-cyan-400" />
+              AI Demand Engine
+            </div>
+            <DataModeBadge isDemoMode={true} />
           </div>
           <h1 className="text-3xl md:text-4xl font-bold tracking-tight text-white">
             Delhi Electricity Demand Forecasting
           </h1>
           <p className="text-sm text-gray-400 mt-1">
-            Real-time machine learning predictions powered by OpenSTEF and weather models
+            Multi-horizon operational machine learning predictions powered by OpenSTEF and weather models
           </p>
-        </div>
-
-        {/* Horizon Selector Tabs */}
-        <div className="liquid-glass p-1.5 rounded-xl border border-white/10 flex items-center gap-1.5 self-start md:self-auto">
-          <button
-            onClick={() => setActiveHorizon('short_term')}
-            className={`px-4 py-2 rounded-lg text-xs font-semibold transition-all cursor-pointer flex items-center gap-1.5 ${
-              activeHorizon === 'short_term'
-                ? 'bg-cyan-500 text-black shadow-lg shadow-cyan-500/20'
-                : 'text-gray-300 hover:text-white hover:bg-white/5'
-            }`}
-          >
-            <Zap className="w-3.5 h-3.5" />
-            15m – 6h
-          </button>
-
-          <button
-            onClick={() => setActiveHorizon('day_ahead')}
-            className={`px-4 py-2 rounded-lg text-xs font-semibold transition-all cursor-pointer flex items-center gap-1.5 ${
-              activeHorizon === 'day_ahead'
-                ? 'bg-emerald-400 text-black shadow-lg shadow-emerald-400/20'
-                : 'text-gray-300 hover:text-white hover:bg-white/5'
-            }`}
-          >
-            <Cpu className="w-3.5 h-3.5" />
-            1 – 7 Days ⭐
-          </button>
-
-          <button
-            onClick={() => setActiveHorizon('long_term')}
-            className={`px-4 py-2 rounded-lg text-xs font-semibold transition-all cursor-pointer flex items-center gap-1.5 ${
-              activeHorizon === 'long_term'
-                ? 'bg-amber-400 text-black shadow-lg shadow-amber-400/20'
-                : 'text-gray-300 hover:text-white hover:bg-white/5'
-            }`}
-          >
-            <Compass className="w-3.5 h-3.5" />
-            1 – 5 Years
-          </button>
         </div>
       </div>
 
-      {/* KPI Cards Strip */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
-        <div className="liquid-glass p-4 rounded-xl border border-white/10">
-          <div className="text-xs text-gray-400 font-medium">Active Horizon</div>
-          <div className="text-xl font-bold text-white mt-1 capitalize">
-            {activeHorizon.replace('_', ' ')}
-          </div>
-          <div className="text-[11px] text-cyan-400 mt-1">
-            {activeHorizon === 'day_ahead' ? '⭐ OpenSTEF Primary Pipeline' : activeHorizon === 'short_term' ? '⚡ Intra-Day Ramp Engine' : '🏢 Zonal Growth Model'}
-          </div>
-        </div>
+      {/* Reusable Horizon Selector */}
+      <div className="mb-8">
+        <ForecastHorizonSelector selectedHorizon={activeHorizon} onChange={setActiveHorizon} />
+      </div>
 
-        <div className="liquid-glass p-4 rounded-xl border border-white/10">
-          <div className="text-xs text-gray-400 font-medium">Predicted Peak Demand</div>
-          <div className="text-xl font-bold text-emerald-400 mt-1 flex items-baseline gap-1">
-            {maxDemand.toLocaleString()} <span className="text-xs text-gray-300">MW</span>
-          </div>
-          <div className="text-[11px] text-gray-400 mt-1 flex items-center gap-1">
-            <ArrowUpRight className="w-3 h-3 text-emerald-400" /> Peak Load Margin: Safe
-          </div>
-        </div>
+      {/* Horizon-Specific Metric Cards Strip */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4 mb-8">
+        {activeHorizon === 'short_term' && (
+          <>
+            <div className="liquid-glass p-4 rounded-xl border border-white/10">
+              <div className="text-xs text-gray-400 font-medium">Current Delhi Load</div>
+              <div className="text-xl font-bold text-white mt-1">6,485 MW</div>
+              <div className="text-[11px] text-emerald-400 mt-1">Live SLDC Telemetry</div>
+            </div>
+            <div className="liquid-glass p-4 rounded-xl border border-white/10">
+              <div className="text-xs text-gray-400 font-medium">Forecast Load (Next 1h)</div>
+              <div className="text-xl font-bold text-cyan-400 mt-1">6,720 MW</div>
+              <div className="text-[11px] text-gray-400 mt-1">+235 MW Delta</div>
+            </div>
+            <div className="liquid-glass p-4 rounded-xl border border-white/10">
+              <div className="text-xs text-gray-400 font-medium">Near-Term Peak</div>
+              <div className="text-xl font-bold text-emerald-400 mt-1">{maxDemand.toLocaleString()} MW</div>
+              <div className="text-[11px] text-gray-400 mt-1">Time: {peakTime}</div>
+            </div>
+            <div className="liquid-glass p-4 rounded-xl border border-white/10">
+              <div className="text-xs text-gray-400 font-medium">Max Ramp Rate</div>
+              <div className="text-xl font-bold text-amber-400 mt-1">+38.5 MW/min</div>
+              <div className="text-[11px] text-amber-300 mt-1">Moderate Evening Ramp</div>
+            </div>
+            <div className="liquid-glass p-4 rounded-xl border border-white/10">
+              <div className="text-xs text-gray-400 font-medium">Peak Exceedance Prob.</div>
+              <div className="text-xl font-bold text-white mt-1">12.4 %</div>
+              <div className="text-[11px] text-emerald-400 mt-1">P95 Grid Safe Margin</div>
+            </div>
+          </>
+        )}
 
-        <div className="liquid-glass p-4 rounded-xl border border-white/10">
-          <div className="text-xs text-gray-400 font-medium">Minimum Base Load</div>
-          <div className="text-xl font-bold text-cyan-400 mt-1 flex items-baseline gap-1">
-            {minDemand.toLocaleString()} <span className="text-xs text-gray-300">MW</span>
-          </div>
-          <div className="text-[11px] text-gray-400 mt-1">Night base thermal capacity</div>
-        </div>
+        {activeHorizon === 'day_ahead' && (
+          <>
+            <div className="liquid-glass p-4 rounded-xl border border-white/10">
+              <div className="text-xs text-gray-400 font-medium">Day-Ahead Peak Load</div>
+              <div className="text-xl font-bold text-emerald-400 mt-1">{maxDemand.toLocaleString()} MW</div>
+              <div className="text-[11px] text-cyan-400 mt-1">⭐ OpenSTEF Primary</div>
+            </div>
+            <div className="liquid-glass p-4 rounded-xl border border-white/10">
+              <div className="text-xs text-gray-400 font-medium">Peak Load Time</div>
+              <div className="text-xl font-bold text-white mt-1">{peakTime}</div>
+              <div className="text-[11px] text-gray-400 mt-1">Afternoon AC Surge</div>
+            </div>
+            <div className="liquid-glass p-4 rounded-xl border border-white/10">
+              <div className="text-xs text-gray-400 font-medium">7-Day Maximum Peak</div>
+              <div className="text-xl font-bold text-amber-400 mt-1">7,820 MW</div>
+              <div className="text-[11px] text-gray-400 mt-1">Expected on Friday</div>
+            </div>
+            <div className="liquid-glass p-4 rounded-xl border border-white/10">
+              <div className="text-xs text-gray-400 font-medium">Average Grid Demand</div>
+              <div className="text-xl font-bold text-cyan-400 mt-1">{avgDemand.toLocaleString()} MW</div>
+              <div className="text-[11px] text-gray-400 mt-1">Base Thermal Allocation</div>
+            </div>
+            <div className="liquid-glass p-4 rounded-xl border border-white/10">
+              <div className="text-xs text-gray-400 font-medium">Peak Probability</div>
+              <div className="text-xl font-bold text-white mt-1">94.8 %</div>
+              <div className="text-[11px] text-emerald-400 mt-1">OpenSTEF Confidence</div>
+            </div>
+          </>
+        )}
 
-        <div className="liquid-glass p-4 rounded-xl border border-white/10">
-          <div className="text-xs text-gray-400 font-medium flex items-center justify-between">
-            <span>Avg Forecast Temp</span>
-            <Thermometer className="w-3.5 h-3.5 text-amber-400" />
-          </div>
-          <div className="text-xl font-bold text-amber-400 mt-1">
-            {avgTemp} °C
-          </div>
-          <div className="text-[11px] text-gray-400 mt-1">Delhi Meteorological Driver</div>
-        </div>
+        {activeHorizon === 'long_term' && (
+          <>
+            <div className="liquid-glass p-4 rounded-xl border border-white/10">
+              <div className="text-xs text-gray-400 font-medium">Current Baseline (2026)</div>
+              <div className="text-xl font-bold text-white mt-1">8,350 MW</div>
+              <div className="text-[11px] text-cyan-400 mt-1">Historical Summer Peak</div>
+            </div>
+            <div className="liquid-glass p-4 rounded-xl border border-white/10">
+              <div className="text-xs text-gray-400 font-medium">5-Year Projected Peak</div>
+              <div className="text-xl font-bold text-amber-400 mt-1">10,580 MW</div>
+              <div className="text-[11px] text-gray-400 mt-1">Target Year 2030</div>
+            </div>
+            <div className="liquid-glass p-4 rounded-xl border border-white/10">
+              <div className="text-xs text-gray-400 font-medium">5-Year Growth Rate</div>
+              <div className="text-xl font-bold text-emerald-400 mt-1">+6.2 % CAGR</div>
+              <div className="text-[11px] text-emerald-400 mt-1">Macro-Spatial Model</div>
+            </div>
+            <div className="liquid-glass p-4 rounded-xl border border-white/10">
+              <div className="text-xs text-gray-400 font-medium">Fastest Growing Zone</div>
+              <div className="text-xl font-bold text-cyan-400 mt-1">South Delhi</div>
+              <div className="text-[11px] text-gray-400 mt-1">BRPL DISCOM Corridor</div>
+            </div>
+            <div className="liquid-glass p-4 rounded-xl border border-white/10">
+              <div className="text-xs text-gray-400 font-medium">Projected EV Adoption</div>
+              <div className="text-xl font-bold text-white mt-1">26.0 %</div>
+              <div className="text-[11px] text-cyan-400 mt-1">Grid Charging Load</div>
+            </div>
+          </>
+        )}
       </div>
 
       {/* Main Chart Container */}
       <div className="liquid-glass p-6 rounded-2xl border border-white/10 mb-8">
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
           <div>
-            <h2 className="text-xl font-bold text-white">Demand Curve & Confidence Bands</h2>
+            <h2 className="text-xl font-bold text-white">Demand Curve & Probabilistic Confidence Bands</h2>
             <p className="text-xs text-gray-400 mt-0.5">
               Comparing OpenSTEF ML predictions, 95% confidence intervals, and actual SLDC historical load
             </p>
@@ -301,7 +322,7 @@ export const ForecastPage = () => {
           </div>
 
           <a
-            href="/model-intelligence"
+            href="/model"
             className="mt-4 w-full py-2 rounded-lg bg-white/10 hover:bg-white/20 text-center text-xs font-semibold text-white transition-colors block"
           >
             View Full Model Intelligence →

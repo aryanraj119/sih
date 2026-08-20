@@ -8,7 +8,7 @@ import { Zap, Menu, X, Activity, Calendar } from 'lucide-react';
 export const Navbar = () => {
   const [isMobileOpen, setIsMobileOpen] = useState(false);
   const [gridStatus, setGridStatus] = useState(getLiveDelhiGridStatus());
-  const { selectedDate, setSelectedDate, presetDates } = useDate();
+  const { selectedDate, setSelectedDate } = useDate();
   const location = useLocation();
 
   useEffect(() => {
@@ -30,6 +30,36 @@ export const Navbar = () => {
     { label: 'AI Simulator', path: '/simulator' },
     { label: 'Model Intelligence', path: '/model' },
   ];
+
+  // Helper to parse Year, Month, Day from selectedDate (YYYY-MM-DD)
+  const dateParts = selectedDate.split('-');
+  const currYear = dateParts[0] || '2026';
+  const currMonth = dateParts[1] || '08';
+  const currDay = dateParts[2] || '20';
+
+  const months = [
+    { value: '01', name: 'Jan (January)' },
+    { value: '02', name: 'Feb (February)' },
+    { value: '03', name: 'Mar (March)' },
+    { value: '04', name: 'Apr (April)' },
+    { value: '05', name: 'May (May)' },
+    { value: '06', name: 'Jun (Summer Peak June)' },
+    { value: '07', name: 'Jul (Monsoon July)' },
+    { value: '08', name: 'Aug (Peak August)' },
+    { value: '09', name: 'Sep (September)' },
+    { value: '10', name: 'Oct (October)' },
+    { value: '11', name: 'Nov (November)' },
+    { value: '12', name: 'Dec (December)' },
+  ];
+
+  const handleMonthChange = (newMonth: string) => {
+    setSelectedDate(`${currYear}-${newMonth}-${currDay}`);
+  };
+
+  const handleDayChange = (newDay: string) => {
+    const formattedDay = newDay.padStart(2, '0');
+    setSelectedDate(`${currYear}-${currMonth}-${formattedDay}`);
+  };
 
   return (
     <header className="w-full px-4 md:px-8 lg:px-12 pt-4 relative z-50">
@@ -55,33 +85,89 @@ export const Navbar = () => {
           </div>
         </NavLink>
 
-        {/* Global 2026 Calendar & Date Selector */}
-        <div className="flex items-center gap-2 px-3 py-1.5 rounded-xl bg-cyan-950/70 border border-cyan-500/40 text-xs shadow-lg backdrop-blur-md">
-          <Calendar className="w-4 h-4 text-cyan-400 shrink-0 animate-pulse" />
-          <span className="text-gray-300 font-bold text-[11px] hidden sm:inline">2026 Calendar:</span>
+        {/* ULTRA-EASY 2026 CALENDAR & DATE SELECTOR CONTROL */}
+        <div className="flex items-center gap-2 px-3.5 py-1.5 rounded-xl bg-cyan-950/80 border border-cyan-500/50 text-xs shadow-xl backdrop-blur-md relative">
+          <Calendar className="w-4 h-4 text-amber-400 shrink-0 animate-bounce" />
           
-          {/* Interactive Date Picker */}
-          <input
-            type="date"
-            min="2026-01-01"
-            max="2026-12-31"
-            value={selectedDate}
-            onChange={(e) => setSelectedDate(e.target.value)}
-            className="bg-black/90 text-yellow-300 font-mono font-bold text-xs px-2.5 py-1 rounded-lg border border-cyan-500/50 focus:outline-none focus:border-yellow-400 cursor-pointer shadow-inner"
-          />
+          <div className="flex items-center gap-1.5">
+            <span className="text-gray-300 font-extrabold text-[11px] hidden sm:inline">2026 Date:</span>
+            
+            {/* MONTH SELECTOR DROPDOWN */}
+            <select
+              value={currMonth}
+              onChange={(e) => handleMonthChange(e.target.value)}
+              className="bg-black text-amber-300 font-bold text-xs px-2.5 py-1.5 rounded-lg border border-cyan-500/50 focus:outline-none focus:border-amber-400 cursor-pointer"
+            >
+              {months.map((m) => (
+                <option key={m.value} value={m.value} className="bg-gray-900 text-white">
+                  {m.name}
+                </option>
+              ))}
+            </select>
 
-          {/* Quick Preset Selector Dropdown */}
-          <select
-            value={selectedDate}
-            onChange={(e) => setSelectedDate(e.target.value)}
-            className="hidden md:block bg-black/80 text-cyan-300 font-semibold text-[11px] px-2 py-1 rounded-lg border border-cyan-500/30 focus:outline-none cursor-pointer"
-          >
-            {presetDates.map((p) => (
-              <option key={p.date} value={p.date} className="bg-gray-900 text-white">
-                {p.label}
-              </option>
-            ))}
-          </select>
+            {/* DAY SELECTOR DROPDOWN */}
+            <select
+              value={currDay}
+              onChange={(e) => handleDayChange(e.target.value)}
+              className="bg-black text-cyan-300 font-bold text-xs px-2 py-1.5 rounded-lg border border-cyan-500/50 focus:outline-none focus:border-cyan-400 cursor-pointer"
+            >
+              {Array.from({ length: 31 }, (_, i) => {
+                const dayVal = (i + 1).toString().padStart(2, '0');
+                return (
+                  <option key={dayVal} value={dayVal} className="bg-gray-900 text-white">
+                    Day {i + 1}
+                  </option>
+                );
+              })}
+            </select>
+
+            {/* NATIVE CALENDAR PICKER OVERRIDE WITH DARK SCHEME */}
+            <input
+              type="date"
+              min="2026-01-01"
+              max="2026-12-31"
+              value={selectedDate}
+              onChange={(e) => setSelectedDate(e.target.value)}
+              className="[color-scheme:dark] bg-black text-yellow-300 font-mono font-bold text-xs px-2 py-1.5 rounded-lg border border-amber-500/40 focus:outline-none cursor-pointer w-32 hidden md:block"
+            />
+          </div>
+
+          {/* QUICK PRESET SEASONAL BUTTONS */}
+          <div className="hidden xl:flex items-center gap-1.5 ml-2 border-l border-white/15 pl-2">
+            <button
+              type="button"
+              onClick={() => setSelectedDate('2026-06-15')}
+              className={`px-2 py-1 rounded text-[10px] font-bold border transition-all cursor-pointer ${
+                selectedDate === '2026-06-15'
+                  ? 'bg-amber-500 text-black border-amber-400 font-extrabold'
+                  : 'bg-white/5 text-amber-300 border-white/10 hover:bg-white/10'
+              }`}
+            >
+              🔥 Jun 15
+            </button>
+            <button
+              type="button"
+              onClick={() => setSelectedDate('2026-07-20')}
+              className={`px-2 py-1 rounded text-[10px] font-bold border transition-all cursor-pointer ${
+                selectedDate === '2026-07-20'
+                  ? 'bg-cyan-500 text-black border-cyan-400 font-extrabold'
+                  : 'bg-white/5 text-cyan-300 border-white/10 hover:bg-white/10'
+              }`}
+            >
+              🌧️ Jul 20
+            </button>
+            <button
+              type="button"
+              onClick={() => setSelectedDate('2026-08-20')}
+              className={`px-2 py-1 rounded text-[10px] font-bold border transition-all cursor-pointer ${
+                selectedDate === '2026-08-20'
+                  ? 'bg-rose-500 text-white border-rose-400 font-extrabold shadow-md'
+                  : 'bg-white/5 text-rose-300 border-white/10 hover:bg-white/10'
+              }`}
+            >
+              ⚡ Aug 20
+            </button>
+          </div>
         </div>
 
         {/* Live Grid Status Ticker & Demo Mode Badge */}
@@ -134,21 +220,42 @@ export const Navbar = () => {
       {isMobileOpen && (
         <div className="lg:hidden absolute top-full left-4 right-4 mt-2 liquid-glass rounded-2xl p-5 border border-white/10 shadow-2xl z-50 flex flex-col gap-3">
           
-          <div className="p-3 rounded-xl bg-cyan-950/70 border border-cyan-500/40 flex flex-col gap-2">
+          <div className="p-3.5 rounded-xl bg-cyan-950/90 border border-cyan-500/50 flex flex-col gap-2">
             <div className="flex items-center justify-between text-xs text-gray-300">
               <span className="font-bold flex items-center gap-1.5">
-                <Calendar className="w-4 h-4 text-cyan-400" /> 2026 Calendar Simulator
+                <Calendar className="w-4 h-4 text-amber-400" /> 2026 Date Selector
               </span>
-              <span className="text-yellow-300 font-mono font-bold">{selectedDate}</span>
+              <span className="text-yellow-300 font-mono font-extrabold">{selectedDate}</span>
             </div>
-            <input
-              type="date"
-              min="2026-01-01"
-              max="2026-12-31"
-              value={selectedDate}
-              onChange={(e) => setSelectedDate(e.target.value)}
-              className="w-full bg-black text-yellow-300 font-mono font-bold text-xs p-2 rounded-lg border border-cyan-500/50"
-            />
+
+            <div className="grid grid-cols-2 gap-2">
+              <select
+                value={currMonth}
+                onChange={(e) => handleMonthChange(e.target.value)}
+                className="bg-black text-amber-300 font-bold text-xs p-2 rounded-lg border border-cyan-500/50"
+              >
+                {months.map((m) => (
+                  <option key={m.value} value={m.value} className="bg-gray-900 text-white">
+                    {m.name}
+                  </option>
+                ))}
+              </select>
+
+              <select
+                value={currDay}
+                onChange={(e) => handleDayChange(e.target.value)}
+                className="bg-black text-cyan-300 font-bold text-xs p-2 rounded-lg border border-cyan-500/50"
+              >
+                {Array.from({ length: 31 }, (_, i) => {
+                  const dayVal = (i + 1).toString().padStart(2, '0');
+                  return (
+                    <option key={dayVal} value={dayVal} className="bg-gray-900 text-white">
+                      Day {i + 1}
+                    </option>
+                  );
+                })}
+              </select>
+            </div>
           </div>
 
           {navItems.map((item) => (

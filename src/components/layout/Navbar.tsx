@@ -68,8 +68,8 @@ export const Navbar = () => {
         
         {/* Official URJADRISHTI Brand Logo & Tag */}
         <NavLink to="/" className="flex items-center gap-3 group shrink-0">
-          <div className="w-10 h-10 rounded-xl bg-gradient-to-tr from-cyan-950 via-slate-900 to-emerald-950 p-1 flex items-center justify-center border border-cyan-500/40 shadow-lg shadow-cyan-500/20 group-hover:scale-105 transition-transform">
-            <UrjadrishtiLogoIcon className="w-8 h-8" />
+          <div className="h-11 px-2.5 py-1 rounded-xl bg-black/80 flex items-center justify-center border border-cyan-500/50 shadow-lg shadow-cyan-500/20 group-hover:scale-105 transition-transform">
+            <UrjadrishtiLogoIcon className="h-8 w-auto object-contain" />
           </div>
           <div className="flex flex-col">
             <div className="flex items-baseline gap-2">

@@ -23,7 +23,7 @@ from backend.ai_models.fire_detector import FireDetectionEngine
 app = FastAPI(
     title="URJADRISHTI API",
     description="AI-Powered Energy Intelligence for Delhi powered by OpenSTEF, Gemini AI & YOLOv8 Fire Vision AI",
-    version="0.8.0"
+    version="0.9.0"
 )
 
 # Enable CORS for local development
@@ -81,7 +81,7 @@ def health_check(date: Optional[str] = Query(None, description="2026 Calendar da
     summary = data_generator.get_summary_metrics(date)
     return {
         "status": "ok",
-        "version": "0.8.0",
+        "version": "0.9.0",
         "selected_date": summary.get("target_date", "2026-08-20"),
         "dataset": "Power Demand Data.csv (24,312 real records)",
         "daily_peak_demand_mw": summary.get("daily_peak_demand_mw", 7215.7),
@@ -307,37 +307,46 @@ def detect_substation_fire(req: FireDetectRequest):
             "detector": "Error"
         }
 
+# ==================== AI SCENARIO STRESS SIMULATOR API ====================
+
 @app.post("/api/scenario")
 def simulate_scenario(req: ScenarioRequest):
     summary = data_generator.get_summary_metrics(req.date)
-    baseline_points = data_generator.get_interval_data(horizon="short_term", target_date_str=req.date)
-    simulated_points = []
+    baseline_points = data_generator.get_interval_data(horizon="day_ahead", target_date_str=req.date)
 
+    simulated_points = []
     for pt in baseline_points:
+        base_demand = pt["actual_mw"]
         temp_impact = req.temp_anomaly * 280.0
         ev_impact = (req.ev_adoption_pct / 10.0) * 220.0
         solar_offset = (req.solar_capacity_mw / 1000.0) * (pt.get("solar_mw", 0))
         gdp_factor = 1.0 + (req.gdp_growth_pct - 6.0) * 0.015
 
-        sim_pred = int((pt["predicted_mw"] + temp_impact + ev_impact - solar_offset) * gdp_factor)
+        sim_pred = int((base_demand + temp_impact + ev_impact - solar_offset) * gdp_factor)
 
         simulated_points.append({
             "timestamp": pt["timestamp"],
+            "time": pt["time"],
             "time_label": pt["time_label"],
-            "baseline_mw": pt["predicted_mw"],
-            "simulated_mw": sim_pred,
+            "actual_mw": base_demand,
+            "actualMW": base_demand,
+            "predicted_mw": sim_pred,
+            "predictedMW": sim_pred,
             "p10_mw": int(sim_pred * 0.96),
             "p50_mw": sim_pred,
             "p90_mw": int(sim_pred * 1.04),
+            "temperature_c": pt.get("temperature_c", 31.4),
+            "solar_mw": pt.get("solar_mw", 0)
         })
 
     baseline_peak = summary.get("daily_peak_demand_mw", 7215.7)
-    simulated_peak = max(p["simulated_mw"] for p in simulated_points) if simulated_points else baseline_peak
+    simulated_peak = max(p["predictedMW"] for p in simulated_points) if simulated_points else baseline_peak
     delta_mw = simulated_peak - baseline_peak
 
     return {
         "selected_date": req.date or "2026-08-20",
-        "data_mode": "SIMULATION_MODE",
+        "data_mode": "REAL_CSV_SIMULATION_MODE",
+        "dataset_source": "Power Demand Data.csv",
         "scenario_inputs": req.dict(),
         "baseline_peak_mw": baseline_peak,
         "simulated_peak_mw": simulated_peak,

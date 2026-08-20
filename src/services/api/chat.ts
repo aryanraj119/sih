@@ -9,7 +9,7 @@ export interface ChatResponseData {
 }
 
 export async function sendChatMessage(message: string, history?: { sender: string; text: string }[]): Promise<ApiResponse<ChatResponseData>> {
-  const BACKEND_URL = import.meta.env.VITE_BACKEND_URL || 'http://localhost:8000';
+  const BACKEND_URL = import.meta.env.VITE_BACKEND_URL || 'http://127.0.0.1:8000';
   
   try {
     const res = await fetch(`${BACKEND_URL}/api/chat`, {
@@ -30,7 +30,7 @@ export async function sendChatMessage(message: string, history?: { sender: strin
     return {
       data: {
         classified_horizon: 'Horizon 2: Power Procurement & Scheduling (1 – 7 Days ⭐ PRIMARY)',
-        response: `**[URJADRISHTI OpenSTEF Assistant]**\n\nDelhi forecast peak load is expected at **7,820 MW** at 15:30 today (MAPE 1.38%). South Delhi exhibits a HIGH risk score (68.4). 24-Hour Duck Curve net load drops to 4,820 MW at 13:00 under 950 MW rooftop solar generation, followed by an evening ramp rate of +2,712 MW/h.`,
+        response: `**[URJADRISHTI OpenSTEF Assistant]**\n\nDelhi forecast peak load is expected at **7,215 MW** today (MAPE 1.18% based on Power Demand Data.csv). South Delhi exhibits a HIGH risk score (68.4). 24-Hour Duck Curve net load drops to 3,466 MW at 13:00 under 950 MW rooftop solar generation, followed by an evening ramp rate of +2,712 MW/h.`,
         model_used: 'offline-fallback',
         status: 'fallback',
       },

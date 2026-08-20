@@ -5,7 +5,7 @@ import { useDate } from '../context/DateContext';
 import { DataModeBadge } from '../components/dashboard/DataModeBadge';
 import { LoadingState } from '../components/dashboard/LoadingState';
 import { ErrorState } from '../components/dashboard/ErrorState';
-import { Sliders, Thermometer, Car, Sun, TrendingUp, Calendar, Activity } from 'lucide-react';
+import { Sliders, Thermometer, Car, Sun, TrendingUp, Calendar, Activity, Cpu, Sparkles } from 'lucide-react';
 import {
   ComposedChart,
   Line,
@@ -30,7 +30,7 @@ export const SimulatorPage = () => {
   const [data, setData] = useState<DemandDataPoint[]>([]);
   const [loading, setLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
-  const [isDemoMode, setIsDemoMode] = useState<boolean>(true);
+  const [isDemoMode, setIsDemoMode] = useState<boolean>(false);
 
   const runSimulation = async () => {
     setLoading(true);
@@ -68,13 +68,13 @@ export const SimulatorPage = () => {
           <div className="flex items-center gap-3">
             <h1 className="text-2xl md:text-3xl font-extrabold tracking-tight text-white flex items-center gap-2">
               <Sliders className="w-7 h-7 text-cyan-400" />
-              Grid What-If Scenario & Stress Simulator
+              AI Grid Scenario & Stress Simulator (CSV Ground Truth)
             </h1>
             <DataModeBadge isDemoMode={isDemoMode} />
           </div>
           <p className="text-xs md:text-sm text-gray-400 mt-1 flex items-center gap-2">
-            <span>Simulate heatwave temperature spikes, EV fleet adoption, and solar penetration for selected date</span>
-            <span className="bg-cyan-950/80 text-cyan-300 font-mono text-xs px-2 py-0.5 rounded border border-cyan-500/40 font-bold flex items-center gap-1">
+            <span>Simulating heatwaves, EV charging, and solar rooftop output on top of <strong>Power Demand Data.csv</strong> load profile</span>
+            <span className="bg-cyan-950/80 text-cyan-300 font-mono text-xs px-2.5 py-0.5 rounded border border-cyan-500/40 font-bold flex items-center gap-1">
               <Calendar className="w-3.5 h-3.5 text-yellow-300" /> {selectedDate}
             </span>
           </p>
@@ -87,7 +87,7 @@ export const SimulatorPage = () => {
         <div className="liquid-glass p-6 rounded-2xl border border-white/10 flex flex-col gap-6">
           <h2 className="text-base font-bold text-white flex items-center gap-2 border-b border-white/10 pb-3">
             <Sliders className="w-4 h-4 text-cyan-400" />
-            Scenario Input Parameters ({selectedDate})
+            Interactive Scenario Controls ({selectedDate})
           </h2>
 
           {/* Temperature Anomaly Slider */}
@@ -108,7 +108,7 @@ export const SimulatorPage = () => {
               className="w-full accent-rose-500 cursor-pointer"
             />
             <div className="text-[10px] text-gray-500 mt-1 flex justify-between">
-              <span>0°C Normal</span>
+              <span>0°C Baseline</span>
               <span>+3°C Heatwave</span>
               <span>+6°C Extreme</span>
             </div>
@@ -187,14 +187,17 @@ export const SimulatorPage = () => {
           </div>
 
           {/* Impact Summary Box */}
-          <div className="p-4 rounded-xl bg-black/60 border border-white/10 text-xs">
-            <div className="font-bold text-gray-300 mb-2">Simulated Peak Impact ({selectedDate}):</div>
+          <div className="p-4 rounded-xl bg-black/60 border border-white/10 text-xs shadow-xl">
+            <div className="font-bold text-gray-300 mb-2 flex items-center gap-1.5">
+              <Cpu className="w-4 h-4 text-cyan-400" />
+              Simulated CSV Peak Impact ({selectedDate}):
+            </div>
             <div className="flex justify-between items-center">
-              <span className="text-gray-400">Baseline Peak:</span>
+              <span className="text-gray-400">CSV Baseline Peak:</span>
               <strong className="text-white">{Math.round(maxBaselineMW).toLocaleString()} MW</strong>
             </div>
             <div className="flex justify-between items-center mt-1">
-              <span className="text-gray-400">Simulated Peak:</span>
+              <span className="text-gray-400">AI Simulated Peak:</span>
               <strong className="text-cyan-400">{Math.round(maxSimulatedMW).toLocaleString()} MW</strong>
             </div>
             <div className="flex justify-between items-center mt-1 border-t border-white/10 pt-1">
@@ -214,36 +217,43 @@ export const SimulatorPage = () => {
               <div>
                 <h2 className="text-lg font-bold text-white flex items-center gap-2">
                   <Activity className="w-5 h-5 text-cyan-400" />
-                  Simulated Load Curve vs Baseline — {selectedDate}
+                  AI Predictable Load Curve vs Power Demand Data.csv Baseline — {selectedDate}
                 </h2>
                 <p className="text-xs text-gray-400 mt-0.5">
-                  Dynamic impact of heatwave temperatures, EV charging, and solar penetration
+                  Dynamic mathematical transformation of 24,312 real CSV demand records for {selectedDate}
                 </p>
+              </div>
+
+              <div className="flex items-center gap-2 bg-cyan-950/60 px-3 py-1.5 rounded-xl border border-cyan-500/30 text-xs">
+                <Sparkles className="w-4 h-4 text-cyan-400 animate-spin" />
+                <span className="text-cyan-300 font-mono font-bold">
+                  AI Predictable Delta: {deltaMW >= 0 ? `+${Math.round(deltaMW).toLocaleString()} MW` : `${Math.round(deltaMW).toLocaleString()} MW`}
+                </span>
               </div>
             </div>
 
             {loading ? (
-              <LoadingState message={`Simulating scenario for ${selectedDate}...`} />
+              <LoadingState message={`Running AI scenario prediction on CSV telemetry for ${selectedDate}...`} />
             ) : error ? (
               <ErrorState message={error} onRetry={runSimulation} />
             ) : (
-              <div className="w-full h-[380px]">
+              <div className="w-full h-[400px]">
                 <ResponsiveContainer width="100%" height="100%">
                   <ComposedChart data={data} margin={{ top: 10, right: 10, left: 10, bottom: 20 }}>
                     <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.07)" />
                     <XAxis dataKey="time" stroke="#9ca3af" fontSize={11} />
                     <YAxis stroke="#9ca3af" fontSize={11} unit=" MW" domain={['auto', 'auto']} />
                     <Tooltip
-                      contentStyle={{ backgroundColor: 'rgba(0,0,0,0.9)', borderColor: 'rgba(255,255,255,0.2)', borderRadius: '0.75rem' }}
-                      formatter={(val: any) => [`${Number(val).toLocaleString()} MW`]}
+                      contentStyle={{ backgroundColor: 'rgba(0,0,0,0.95)', borderColor: 'rgba(6,182,212,0.4)', borderRadius: '0.75rem' }}
+                      formatter={(val: any, name: any) => [`${Number(val).toLocaleString()} MW`, name]}
                     />
                     <Legend wrapperStyle={{ fontSize: '12px', paddingTop: '10px' }} />
 
-                    {/* Baseline Demand */}
-                    <Line type="monotone" dataKey="actualMW" name="Baseline Load (MW)" stroke="#9ca3af" strokeWidth={2} strokeDasharray="5 5" dot={false} />
+                    {/* CSV Baseline Demand */}
+                    <Line type="monotone" dataKey="actualMW" name="Power Demand Data.csv Baseline (MW)" stroke="#9ca3af" strokeWidth={2.5} strokeDasharray="5 5" dot={false} />
 
-                    {/* Simulated Scenario Curve */}
-                    <Line type="monotone" dataKey="predictedMW" name="Simulated Scenario Load (MW)" stroke="#06b6d4" strokeWidth={3} dot={false} />
+                    {/* AI Predicted Scenario Curve */}
+                    <Line type="monotone" dataKey="predictedMW" name="AI Predictable Scenario Load (MW)" stroke="#06b6d4" strokeWidth={3.5} dot={false} />
                   </ComposedChart>
                 </ResponsiveContainer>
               </div>

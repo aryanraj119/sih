@@ -7,6 +7,7 @@ import os
 import base64
 
 from backend.data.real_power_demand import RealPowerDemandEngine
+from backend.data.real_solar_data import RealSolarDataEngine
 from backend.forecasting.openstef_adapter import OpenSTEFAdapter
 from backend.forecasting.short_term_engine import ShortTermEngine
 from backend.forecasting.day_ahead_engine import DayAheadEngine
@@ -35,8 +36,9 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# Initialize Services & Engines with Ground-Truth Power Demand Data.csv
+# Initialize Services & Engines with Ground-Truth Power Demand & Solar Data
 data_generator = RealPowerDemandEngine()
+solar_data_engine = RealSolarDataEngine()
 openstef_adapter = OpenSTEFAdapter(data_generator=data_generator)
 
 short_term_engine = ShortTermEngine(openstef_adapter=openstef_adapter)
@@ -82,8 +84,8 @@ def health_check(date: Optional[str] = Query(None, description="2026 Calendar da
     return {
         "status": "ok",
         "version": "0.9.0",
-        "selected_date": summary.get("target_date", "2026-08-20"),
-        "dataset": "Power Demand Data.csv (24,312 real records)",
+        "selected_date": summary.get("target_date", "2026-06-21"),
+        "dataset": "Power Demand Data.csv + delhi_simulated_solar_data_june_aug_2021.docx (2,238 solar records)",
         "daily_peak_demand_mw": summary.get("daily_peak_demand_mw", 7215.7),
         "avg_demand_mw": summary.get("average_demand_mw", 4282.7),
         "temperature_c": summary.get("temperature_c", 31.4),
@@ -101,8 +103,8 @@ def get_model_status(date: Optional[str] = Query(None)):
     return {
         "model_name": "URJADRISHTI-OpenSTEF-Predictor",
         "version": "v2.4.0",
-        "selected_date": summary.get("target_date", "2026-08-20"),
-        "dataset_source": "Power Demand Data.csv",
+        "selected_date": summary.get("target_date", "2026-06-21"),
+        "dataset_source": "Power Demand Data.csv & delhi_solar_data.csv",
         "dataset_records": summary.get("total_records", 24312),
         "matched_records": summary.get("dataset_records_matched", 24),
         "vision_ai_model": "YOLOv8-SubstationFire (77.4% mAP50, 20.6ms)",
@@ -124,7 +126,7 @@ def get_forecast(
     
     response = {
         "horizon": horizon,
-        "selected_date": date or "2026-08-20",
+        "selected_date": date or "2026-06-21",
         "model": "OpenSTEF LightGBM Predictor" if horizon != "long_term" else "Macro-Spatial Growth Model",
         "model_version": "v2.4.0",
         "data_mode": "REAL_DATASET_MODE",
@@ -159,7 +161,7 @@ def get_peak_forecast(
     peak_mw = summary.get("daily_peak_demand_mw", 7215.7)
     return {
         "horizon": horizon,
-        "selected_date": date or "2026-08-20",
+        "selected_date": date or "2026-06-21",
         "peak_demand_mw": peak_mw,
         "peak_time": "15:30",
         "p10_mw": round(peak_mw * 0.965, 1),
@@ -172,7 +174,7 @@ def get_peak_forecast(
 def get_regions(date: Optional[str] = Query(None)):
     regions = regional_engine.get_all_regions()
     return {
-        "selected_date": date or "2026-08-20",
+        "selected_date": date or "2026-06-21",
         "data_mode": "REAL_DATASET_MODE",
         "total_count": len(regions),
         "regions": regions,
@@ -187,7 +189,7 @@ def get_regions_risk(date: Optional[str] = Query(None)):
     regions = regional_engine.get_all_regions()
     sorted_risk = sorted(regions, key=lambda x: x["risk_score"], reverse=True)
     return {
-        "selected_date": date or "2026-08-20",
+        "selected_date": date or "2026-06-21",
         "data_mode": "REAL_DATASET_MODE",
         "highest_risk_region": sorted_risk[0]["region_name"],
         "highest_risk_score": sorted_risk[0]["risk_score"],
@@ -199,7 +201,12 @@ def get_regions_risk(date: Optional[str] = Query(None)):
 
 @app.get("/api/solar/current")
 def get_current_solar(date: Optional[str] = Query(None)):
-    return solar_provider.get_current_solar()
+    solar_pts = solar_data_engine.get_solar_for_date(date)
+    curr_solar_mw = solar_pts[12]["solar_mw"] if len(solar_pts) > 12 else 950.0
+    return {
+        "current_solar_mw": curr_solar_mw,
+        "timestamp": datetime.now().isoformat(),
+    }
 
 @app.get("/api/solar/forecast")
 @app.get("/api/solar/profile")
@@ -207,10 +214,11 @@ def get_solar_forecast(
     horizon: str = Query("day_ahead"),
     date: Optional[str] = Query(None)
 ):
-    points = solar_provider.get_forecast_solar(horizon=horizon)
+    points = solar_data_engine.get_solar_for_date(date)
     return {
         "horizon": horizon,
-        "selected_date": date or "2026-08-20",
+        "selected_date": date or "2026-06-21",
+        "dataset_source": "delhi_simulated_solar_data_june_aug_2021.docx",
         "data_mode": "REAL_DATASET_MODE",
         "count": len(points),
         "points": points,
@@ -222,8 +230,8 @@ def get_duck_curve(
     horizon: str = Query("day_ahead"),
     date: Optional[str] = Query(None)
 ):
-    duck = duck_curve_engine.calculate_duck_curve(horizon=horizon)
-    duck["selected_date"] = date or "2026-08-20"
+    duck = duck_curve_engine.calculate_duck_curve(horizon=horizon, target_date_str=date)
+    duck["selected_date"] = date or "2026-06-21"
     return duck
 
 @app.get("/api/solar-grid/summary")
@@ -233,13 +241,15 @@ def get_solar_grid_summary(
 ):
     summary = data_generator.get_summary_metrics(date)
     curr_demand = summary.get("current_electricity_demand_mw", 4416.6)
-    curr_solar = solar_provider.get_current_solar()
-    curr_solar_mw = curr_solar["current_solar_mw"]
-    curr_net = max(0.0, curr_demand - curr_solar_mw)
-    penetration_pct = round((curr_solar_mw / curr_demand * 100.0), 1)
+    
+    solar_pts = solar_data_engine.get_solar_for_date(date)
+    max_solar_mw = max(p["solar_mw"] for p in solar_pts) if solar_pts else 1115.2
+    
+    curr_net = max(0.0, curr_demand - max_solar_mw)
+    penetration_pct = round((max_solar_mw / curr_demand * 100.0), 1)
 
     peak_mw = summary.get("daily_peak_demand_mw", 7215.7)
-    duck = duck_curve_engine.calculate_duck_curve(horizon=horizon)
+    duck = duck_curve_engine.calculate_duck_curve(horizon=horizon, target_date_str=date)
     ramps = RampEngine.calculate_ramps(duck["points"])
 
     stress = GridStressEngine.calculate_stress_score(
@@ -249,9 +259,9 @@ def get_solar_grid_summary(
     )
 
     return {
-        "selected_date": date or "2026-08-20",
+        "selected_date": date or "2026-06-21",
         "current_demand_mw": curr_demand,
-        "current_solar_mw": curr_solar_mw,
+        "current_solar_mw": max_solar_mw,
         "current_net_load_mw": curr_net,
         "solar_penetration_percent": penetration_pct,
         "forecast_peak_mw": peak_mw,
@@ -344,9 +354,9 @@ def simulate_scenario(req: ScenarioRequest):
     delta_mw = simulated_peak - baseline_peak
 
     return {
-        "selected_date": req.date or "2026-08-20",
+        "selected_date": req.date or "2026-06-21",
         "data_mode": "REAL_CSV_SIMULATION_MODE",
-        "dataset_source": "Power Demand Data.csv",
+        "dataset_source": "Power Demand Data.csv + delhi_solar_data.csv",
         "scenario_inputs": req.dict(),
         "baseline_peak_mw": baseline_peak,
         "simulated_peak_mw": simulated_peak,

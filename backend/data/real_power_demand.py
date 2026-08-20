@@ -38,7 +38,7 @@ class RealPowerDemandEngine:
 
     def _get_filtered_df(self, target_date_str: Optional[str] = None) -> tuple[pd.DataFrame, float]:
         """
-        Filters dataframe by target date string (e.g. '2026-06-15' or '2026-08-20').
+        Filters dataframe by target date string (e.g. '2026-06-21' or '2026-08-20').
         Returns (filtered_dataframe, seasonal_scale_factor).
         """
         if self.df is None or len(self.df) == 0:
@@ -102,7 +102,7 @@ class RealPowerDemandEngine:
         temp_c = float(recent_row['temp'])
 
         return {
-            "target_date": target_date_str or "2026-08-20",
+            "target_date": target_date_str or "2026-06-21",
             "current_electricity_demand_mw": curr_demand,
             "daily_peak_demand_mw": max_demand,
             "monthly_peak_demand_mw": round(float(self.df['Power demand'].max()) * scale, 1),
@@ -119,18 +119,17 @@ class RealPowerDemandEngine:
     def get_interval_data(self, horizon: str = "day_ahead", target_date_str: Optional[str] = None) -> List[Dict[str, Any]]:
         """
         Extracts 24-hour day curve or 15-min points from Power Demand Data.csv for the specific selected date.
-        Each date (e.g. June 15 vs July 20 vs August 20) yields its exact recorded CSV telemetry!
+        Each date (e.g. June 21 vs July 20 vs August 20) yields its exact recorded CSV telemetry!
         """
         if self.df is None or len(self.df) == 0:
             return []
 
         sub_df, scale = self._get_filtered_df(target_date_str)
-        date_prefix = target_date_str.split("T")[0] if target_date_str else "2026-08-20"
+        date_prefix = target_date_str.split("T")[0] if target_date_str else "2026-06-21"
 
         points = []
 
         if horizon == "short_term":
-            # 24 15-minute intervals for selected date
             sample_rows = sub_df.tail(24) if len(sub_df) >= 24 else sub_df
             for idx, row in sample_rows.iterrows():
                 t = row['dt']
@@ -162,7 +161,6 @@ class RealPowerDemandEngine:
                     "hour": t.hour,
                 })
         else:
-            # 24 Hourly intervals (00:00 to 23:00) sampled directly from CSV records for this date
             sub_df_copy = sub_df.copy()
             sub_df_copy['hour_group'] = sub_df_copy['hour']
             hourly_agg = sub_df_copy.groupby('hour_group').agg({
@@ -209,3 +207,28 @@ class RealPowerDemandEngine:
                 })
 
         return points
+
+    def generate_regional_data(self):
+        """Generates regional load breakdown for Delhi's 9 analytical regions."""
+        metrics = self.get_summary_metrics()
+        curr_total = metrics.get("current_electricity_demand_mw", 4416.6)
+        
+        # Share ratios across Delhi 9 discom regions
+        ratios = {
+            "south": 0.23, "west": 0.18, "south_west": 0.15, "north": 0.14,
+            "north_west": 0.12, "south_east": 0.08, "central": 0.04,
+            "east": 0.03, "north_east": 0.03
+        }
+
+        regions = [
+            {"id": "north", "name": "North Delhi", "discom": "TPDDL", "current_load_mw": int(curr_total * ratios["north"]), "peak_load_mw": 1320, "capacity_mw": 1500, "solar_mw": 140, "ev_stations": 280, "health_status": "Optimal"},
+            {"id": "north_west", "name": "North-West Delhi", "discom": "TPDDL", "current_load_mw": int(curr_total * ratios["north_west"]), "peak_load_mw": 1140, "capacity_mw": 1300, "solar_mw": 170, "ev_stations": 340, "health_status": "Optimal"},
+            {"id": "north_east", "name": "North-East Delhi", "discom": "BYPL", "current_load_mw": int(curr_total * ratios["north_east"]), "peak_load_mw": 660, "capacity_mw": 750, "solar_mw": 50, "ev_stations": 110, "health_status": "Alert"},
+            {"id": "west", "name": "West Delhi", "discom": "BRPL", "current_load_mw": int(curr_total * ratios["west"]), "peak_load_mw": 1610, "capacity_mw": 1750, "solar_mw": 180, "ev_stations": 390, "health_status": "Optimal"},
+            {"id": "central", "name": "Central Delhi", "discom": "BYPL", "current_load_mw": int(curr_total * ratios["central"]), "peak_load_mw": 730, "capacity_mw": 800, "solar_mw": 60, "ev_stations": 150, "health_status": "Optimal"},
+            {"id": "south", "name": "South Delhi", "discom": "BRPL", "current_load_mw": int(curr_total * ratios["south"]), "peak_load_mw": 2070, "capacity_mw": 2250, "solar_mw": 240, "ev_stations": 460, "health_status": "Optimal"},
+            {"id": "south_east", "name": "South-East Delhi", "discom": "BRPL", "current_load_mw": int(curr_total * ratios["south_east"]), "peak_load_mw": 990, "capacity_mw": 1100, "solar_mw": 110, "ev_stations": 210, "health_status": "Optimal"},
+            {"id": "south_west", "name": "South-West Delhi", "discom": "BRPL", "current_load_mw": int(curr_total * ratios["south_west"]), "peak_load_mw": 1420, "capacity_mw": 1550, "solar_mw": 190, "ev_stations": 360, "health_status": "Optimal"},
+            {"id": "east", "name": "East Delhi", "discom": "BYPL", "current_load_mw": int(curr_total * ratios["east"]), "peak_load_mw": 660, "capacity_mw": 750, "solar_mw": 70, "ev_stations": 150, "health_status": "Alert"},
+        ]
+        return regions

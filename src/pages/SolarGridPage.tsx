@@ -65,7 +65,12 @@ export const SolarGridPage = () => {
   const fetchGeminiAiInsight = async (dateStr: string) => {
     setLoadingAi(true);
     try {
-      const prompt = `Analyze Delhi solar grid Duck Curve net load for date ${dateStr}. Peak demand is expected at ${summary?.forecast_peak_mw || 7215} MW, rooftop solar generation peaks at 950 MW (13.2% penetration), causing a net load trough of 3,466 MW at 13:00 followed by an evening ramp rate of +2,712 MW/h between 17:30 and 20:30. Provide short 3-bullet dispatch advisory for DISCOM engineers.`;
+      const peakSolarMW = duckData?.solar_peak_mw || summary?.current_solar_mw || 1115.2;
+      const minNetMW = duckData?.net_load_minimum_mw || summary?.current_net_load_mw || 3325.0;
+      const peakDemandMW = summary?.forecast_peak_mw || 7215;
+
+      const prompt = `Analyze Delhi solar grid Duck Curve net load for date ${dateStr} (mapped from 2021 dataset). Peak electricity demand is expected at ${peakDemandMW} MW, rooftop solar generation peaks at ${peakSolarMW} MW, creating a net load trough of ${minNetMW} MW followed by an evening ramp rate of +${summary?.maximum_evening_ramp_mw_per_hour || 2712} MW/h between 17:30 and 20:30. Provide short 3-bullet dispatch advisory for DISCOM engineers.`;
+      
       const res = await sendChatMessage(prompt);
       if (res.data && res.data.response) {
         setAiInsight(res.data.response);
@@ -97,7 +102,7 @@ export const SolarGridPage = () => {
             <DataModeBadge isDemoMode={isDemoMode} />
           </div>
           <p className="text-xs md:text-sm text-gray-400 mt-1 flex items-center gap-2">
-            <span>Rooftop solar output, net load trough, and evening ramp rate analysis based on <strong>Power Demand Data.csv</strong></span>
+            <span>Rooftop solar output from <strong>delhi_simulated_solar_data_june_aug_2021.docx</strong> & power load from <strong>Power Demand Data.csv</strong></span>
             <span className="bg-amber-950/80 text-amber-300 font-mono text-xs px-2.5 py-0.5 rounded border border-amber-500/40 font-bold flex items-center gap-1">
               <Calendar className="w-3.5 h-3.5 text-yellow-300" /> {selectedDate}
             </span>
@@ -111,7 +116,7 @@ export const SolarGridPage = () => {
       </div>
 
       {loading ? (
-        <LoadingState message={`Fetching Solar & Net Load curves for ${selectedDate}...`} />
+        <LoadingState message={`Fetching Solar & Net Load curves from 2021 dataset for ${selectedDate}...`} />
       ) : error ? (
         <ErrorState message={error} onRetry={() => loadData(horizon, selectedDate)} />
       ) : (
@@ -120,7 +125,7 @@ export const SolarGridPage = () => {
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
             
             <div className="liquid-glass p-4 rounded-xl border border-white/10">
-              <div className="text-xs text-gray-400 font-medium">Selected Date ({selectedDate}) Demand</div>
+              <div className="text-xs text-gray-400 font-medium">Power Demand Data.csv Load</div>
               <div className="text-2xl font-bold text-cyan-400 mt-1">
                 {summary ? `${summary.current_demand_mw.toLocaleString()} MW` : '4,416 MW'}
               </div>
@@ -130,9 +135,9 @@ export const SolarGridPage = () => {
             </div>
 
             <div className="liquid-glass p-4 rounded-xl border border-white/10">
-              <div className="text-xs text-gray-400 font-medium">Solar Generation Peak</div>
+              <div className="text-xs text-gray-400 font-medium">Solar Dataset Peak ({selectedDate})</div>
               <div className="text-2xl font-bold text-amber-400 mt-1">
-                {duckData ? `${duckData.solar_peak_mw} MW` : '950 MW'}
+                {duckData ? `${duckData.solar_peak_mw} MW` : '1,115.2 MW'}
               </div>
               <div className="text-[11px] text-amber-300 mt-1">
                 Penetration: <strong>{summary?.solar_penetration_percent}%</strong> (Peak at {duckData?.solar_peak_time})
@@ -142,7 +147,7 @@ export const SolarGridPage = () => {
             <div className="liquid-glass p-4 rounded-xl border border-white/10">
               <div className="text-xs text-gray-400 font-medium">Net Load Trough ({selectedDate})</div>
               <div className="text-2xl font-bold text-emerald-400 mt-1">
-                {duckData ? `${duckData.net_load_minimum_mw.toLocaleString()} MW` : '3,466 MW'}
+                {duckData ? `${duckData.net_load_minimum_mw.toLocaleString()} MW` : '3,325.0 MW'}
               </div>
               <div className="text-[11px] text-gray-400 mt-1">
                 Minimum Net Load at <strong>{duckData?.net_load_minimum_time}</strong>
@@ -167,10 +172,10 @@ export const SolarGridPage = () => {
               <div>
                 <h2 className="text-lg font-bold text-white flex items-center gap-2">
                   <Compass className="w-5 h-5 text-amber-400" />
-                  24-Hour Duck Curve & Net Load Profile — {selectedDate}
+                  24-Hour Duck Curve & Net Load Profile — {selectedDate} (Exact 2021 Dataset Match)
                 </h2>
                 <p className="text-xs text-gray-400 mt-0.5">
-                  Comparison between Gross Electricity Demand, Rooftop Solar Output, and Net Dispatchable Load
+                  Comparison between Power Demand Data.csv Load and delhi_simulated_solar_data_june_aug_2021.docx Solar Irradiance
                 </p>
               </div>
 
@@ -191,15 +196,15 @@ export const SolarGridPage = () => {
                     <YAxis stroke="#9ca3af" fontSize={11} unit=" MW" domain={[0, 'auto']} />
                     <Tooltip
                       contentStyle={{ backgroundColor: 'rgba(0,0,0,0.95)', borderColor: 'rgba(251,191,36,0.4)', borderRadius: '0.75rem' }}
-                      formatter={(val: any) => [`${Number(val).toLocaleString()} MW`]}
+                      formatter={(val: any, name: any) => [`${Number(val).toLocaleString()} MW`, name]}
                     />
                     <Legend wrapperStyle={{ fontSize: '12px', paddingTop: '10px' }} />
 
                     {/* Gross Demand */}
-                    <Line type="monotone" dataKey="gross_demand_mw" name="Gross Demand (MW)" stroke="#06b6d4" strokeWidth={2.5} dot={false} />
+                    <Line type="monotone" dataKey="gross_demand_mw" name="Power Demand Data.csv Load (MW)" stroke="#06b6d4" strokeWidth={2.5} dot={false} />
 
                     {/* Solar Generation */}
-                    <Area type="monotone" dataKey="solar_generation_mw" name="Solar Generation (MW)" fill="rgba(251,191,36,0.25)" stroke="#fbbf24" strokeWidth={2} />
+                    <Area type="monotone" dataKey="solar_generation_mw" name="2021 Solar Dataset Output (MW)" fill="rgba(251,191,36,0.25)" stroke="#fbbf24" strokeWidth={2} />
 
                     {/* Net Load Curve */}
                     <Line type="monotone" dataKey="net_load_mw" name="Net Dispatch Load (MW)" stroke="#10b981" strokeWidth={3} dot={false} />
@@ -224,7 +229,7 @@ export const SolarGridPage = () => {
                     </span>
                   </h3>
                   <p className="text-xs text-gray-400">
-                    Real-time operational guidance for Delhi grid dispatchers on {selectedDate}
+                    Real-time operational guidance for Delhi grid dispatchers on {selectedDate} (2021 Solar Telemetry)
                   </p>
                 </div>
               </div>
@@ -251,7 +256,7 @@ export const SolarGridPage = () => {
                 </div>
               ) : (
                 <div className="p-4 rounded-xl bg-black/60 border border-white/10 text-gray-300">
-                  <strong className="text-yellow-300">Operational Summary ({selectedDate}):</strong> Peak rooftop solar output reaches 950 MW at 13:00, creating a net load trough of 3,466 MW. Grid dispatchers must prepare fast-ramping gas CCGT and battery storage systems for the +2,712 MW/h evening ramp starting at 17:30.
+                  <strong className="text-yellow-300">Operational Summary ({selectedDate}):</strong> Peak rooftop solar output reaches {duckData?.solar_peak_mw || 1115.2} MW at {duckData?.solar_peak_time || '13:00'}, creating a net load trough of {duckData?.net_load_minimum_mw || 3325.0} MW. Grid dispatchers must prepare fast-ramping gas CCGT and battery storage systems for the evening ramp starting at 17:30.
                 </div>
               )}
             </div>

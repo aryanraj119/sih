@@ -111,7 +111,7 @@ export const DelhiMap = ({
     };
   }, [activeCameraSubstation]);
 
-  // Real-Time Real-Life Vision AI Fire & Spark Detector Hook (Fast 500ms Frame Scan)
+  // Real-Time Real-Life Vision AI Fire & Spark Detector Hook (Fast 400ms Bounding Box Tracking)
   useEffect(() => {
     let intervalId: any = null;
 
@@ -126,13 +126,13 @@ export const DelhiMap = ({
               hazard_level: 'CRITICAL',
               alert_message: '🔥 CRITICAL ALERT: SPARK OR FIRE DETECTED! CHANCE OF MAJOR OUTBREAK AT SUBSTATION!',
               substation_status: 'FIRE HAZARD EMERGENCY',
-              substation_id: activeCameraSubstation.id
+              substation_id: activeCameraSubstation.id,
+              bounding_box: { x: 30.0, y: 25.0, w: 40.0, h: 45.0 }
             });
             return;
           }
 
           let b64Frame = '';
-          // Ensure video element has active video frame pixels (readyState >= 2)
           if (videoRef.current && videoRef.current.readyState >= 2 && canvasRef.current) {
             const video = videoRef.current;
             const canvas = canvasRef.current;
@@ -162,7 +162,7 @@ export const DelhiMap = ({
       };
 
       runVisionScan();
-      intervalId = setInterval(runVisionScan, 500);
+      intervalId = setInterval(runVisionScan, 400);
     }
 
     return () => {
@@ -192,7 +192,8 @@ export const DelhiMap = ({
         hazard_level: 'CRITICAL',
         alert_message: '🔥 CRITICAL ALERT: SPARK OR FIRE DETECTED! CHANCE OF MAJOR OUTBREAK AT SUBSTATION!',
         substation_status: 'FIRE HAZARD EMERGENCY',
-        substation_id: activeCameraSubstation.id
+        substation_id: activeCameraSubstation.id,
+        bounding_box: { x: 30.0, y: 25.0, w: 40.0, h: 45.0 }
       });
     }
   };
@@ -474,6 +475,31 @@ export const DelhiMap = ({
                 className={`w-full h-full object-cover ${isCameraActive ? 'block' : 'hidden'}`}
               />
 
+              {/* LIVE DYNAMIC BOUNDING BOX OVERLAY ON DETECTED SPARK / FLAME */}
+              {fireResult?.fire_detected && fireResult?.bounding_box && (
+                <div
+                  style={{
+                    left: `${fireResult.bounding_box.x}%`,
+                    top: `${fireResult.bounding_box.y}%`,
+                    width: `${fireResult.bounding_box.w}%`,
+                    height: `${fireResult.bounding_box.h}%`,
+                  }}
+                  className="absolute border-4 border-rose-500 shadow-[0_0_35px_rgba(244,63,94,0.9)] bg-rose-500/25 pointer-events-none animate-pulse z-30 flex flex-col justify-between p-1.5 rounded-lg transition-all duration-300"
+                >
+                  {/* Bounding Box Header Tag */}
+                  <div className="bg-rose-600/95 text-yellow-300 text-[10px] font-mono font-extrabold px-2 py-0.5 rounded shadow-lg self-start flex items-center gap-1 border border-yellow-400/50">
+                    <Flame className="w-3 h-3 text-yellow-300 animate-bounce" />
+                    <span>🔥 SPARK / FLAME DETECTED ({(fireResult.confidence * 100).toFixed(0)}%)</span>
+                  </div>
+
+                  {/* Corner Crosshair Box Markers */}
+                  <div className="flex justify-between items-end w-full">
+                    <div className="w-3 h-3 border-l-2 border-b-2 border-yellow-300"></div>
+                    <div className="w-3 h-3 border-r-2 border-b-2 border-yellow-300"></div>
+                  </div>
+                </div>
+              )}
+
               {/* Camera Offline / Fallback Optical Scanner Feed */}
               {!isCameraActive && (
                 <div className="flex flex-col items-center justify-center p-6 text-center">
@@ -497,18 +523,18 @@ export const DelhiMap = ({
 
               {/* Real-time Fire Alert Red Screen Flash Filter */}
               {fireResult?.fire_detected && (
-                <div className="absolute inset-0 bg-rose-500/25 border-4 border-rose-500 pointer-events-none animate-pulse" />
+                <div className="absolute inset-0 bg-rose-500/15 border-4 border-rose-500 pointer-events-none animate-pulse z-10" />
               )}
 
               {/* Live HUD Overlay */}
-              <div className="absolute top-3 left-3 bg-black/60 px-3 py-1.5 rounded-lg border border-white/10 text-[11px] font-mono text-cyan-300 flex items-center gap-2 backdrop-blur-sm pointer-events-none">
+              <div className="absolute top-3 left-3 bg-black/60 px-3 py-1.5 rounded-lg border border-white/10 text-[11px] font-mono text-cyan-300 flex items-center gap-2 backdrop-blur-sm pointer-events-none z-20">
                 <span className={`w-2 h-2 rounded-full animate-ping ${fireResult?.fire_detected ? 'bg-rose-500' : 'bg-emerald-400'}`}></span>
                 <span>REC • SLDC-CAM-{activeCameraSubstation.id.toUpperCase()}</span>
               </div>
 
-              <div className="absolute bottom-3 right-3 bg-black/60 px-3 py-1.5 rounded-lg border border-white/10 text-[10px] font-mono text-gray-300 flex items-center gap-3 backdrop-blur-sm pointer-events-none">
+              <div className="absolute bottom-3 right-3 bg-black/60 px-3 py-1.5 rounded-lg border border-white/10 text-[10px] font-mono text-gray-300 flex items-center gap-3 backdrop-blur-sm pointer-events-none z-20">
                 <span>FPS: 30.0</span>
-                <span>SCAN: 500ms</span>
+                <span>SCAN: 400ms</span>
                 <span className={fireResult?.fire_detected ? 'text-rose-400 font-bold animate-pulse' : 'text-emerald-400'}>
                   FIRE AI: {isAnalyzingVision ? 'SCANNING...' : fireResult?.fire_detected ? '🔥 FIRE DETECTED' : 'CLEAR'}
                 </span>

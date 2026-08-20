@@ -1,6 +1,7 @@
 import { useState, useRef, useEffect } from 'react';
 import type { MapMetricMode } from './MapMetricSelector';
-import { MapPin, Camera, Video, X, Activity, ShieldCheck, Layers } from 'lucide-react';
+import { MapPin, Camera, Video, X, Activity, ShieldCheck, Layers, Flame, AlertTriangle } from 'lucide-react';
+import { detectSubstationFire, type FireDetectionResult } from '../../services/api/vision';
 
 export interface RegionalMapData {
   region_id: string;
@@ -23,8 +24,8 @@ interface ImageSubstationNode {
   id: string;
   name: string;
   type: 'existing_400' | 'proposed_400' | 'existing_220' | 'proposed_220' | 'generation';
-  x: number; // % X coordinate on image map
-  y: number; // % Y coordinate on image map
+  x: number;
+  y: number;
   voltage: string;
   capacityMW: number;
   status: 'Optimal' | 'Alert' | 'Proposed';
@@ -51,7 +52,14 @@ export const DelhiMap = ({
   const [cameraError, setCameraError] = useState<string | null>(null);
   const [isCameraActive, setIsCameraActive] = useState<boolean>(false);
   const [showAnalyticalHeatmap, setShowAnalyticalHeatmap] = useState<boolean>(false);
+
+  // Vision AI Fire Detection States
+  const [simulateFire, setSimulateFire] = useState<boolean>(false);
+  const [fireResult, setFireResult] = useState<FireDetectionResult | null>(null);
+  const [isAnalyzingVision, setIsAnalyzingVision] = useState<boolean>(false);
+
   const videoRef = useRef<HTMLVideoElement>(null);
+  const canvasRef = useRef<HTMLCanvasElement>(null);
 
   // Exact Substation Coordinates mapped directly onto the SLDC Delhi Power Generation & Transmission Map Image
   const mapSubstations: ImageSubstationNode[] = [
@@ -136,6 +144,54 @@ export const DelhiMap = ({
     };
   }, [activeCameraSubstation]);
 
+  // Real-Time Vision AI Fire & Spark Detector Hook
+  useEffect(() => {
+    let intervalId: any = null;
+
+    if (activeCameraSubstation) {
+      const runVisionScan = async () => {
+        setIsAnalyzingVision(true);
+        try {
+          let b64Frame = '';
+
+          // Capture video frame from canvas
+          if (videoRef.current && canvasRef.current && isCameraActive) {
+            const video = videoRef.current;
+            const canvas = canvasRef.current;
+            canvas.width = 320;
+            canvas.height = 240;
+            const ctx = canvas.getContext('2d');
+            if (ctx) {
+              ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+              b64Frame = canvas.toDataURL('image/jpeg', 0.7);
+            }
+          }
+
+          const res = await detectSubstationFire(
+            b64Frame,
+            activeCameraSubstation.id,
+            simulateFire
+          );
+
+          if (res.data) {
+            setFireResult(res.data);
+          }
+        } catch (err) {
+          console.error("Vision AI scan error:", err);
+        } finally {
+          setIsAnalyzingVision(false);
+        }
+      };
+
+      runVisionScan();
+      intervalId = setInterval(runVisionScan, 2000);
+    }
+
+    return () => {
+      if (intervalId) clearInterval(intervalId);
+    };
+  }, [activeCameraSubstation, isCameraActive, simulateFire]);
+
   const closeCameraModal = () => {
     if (videoRef.current && videoRef.current.srcObject) {
       const stream = videoRef.current.srcObject as MediaStream;
@@ -144,11 +200,15 @@ export const DelhiMap = ({
     setActiveCameraSubstation(null);
     setIsCameraActive(false);
     setCameraError(null);
+    setSimulateFire(false);
+    setFireResult(null);
   };
 
   return (
     <div className={`liquid-glass p-6 rounded-2xl border border-white/10 relative overflow-hidden ${className}`}>
-      
+      {/* Hidden Canvas for Video Frame Capture */}
+      <canvas ref={canvasRef} className="hidden" />
+
       {/* Map Header */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-4">
         <div>
@@ -157,7 +217,7 @@ export const DelhiMap = ({
             Delhi Power Generation & Transmission Network Map
           </h2>
           <p className="text-xs text-gray-400 mt-0.5">
-            Click any <span className="text-cyan-300 font-bold">📹 Glowing Substation Node</span> directly on the SLDC Map image to open your laptop camera feed
+            Click any <span className="text-cyan-300 font-bold">📹 Glowing Substation Node</span> directly on the SLDC Map image to open your laptop camera feed & PyTorch Fire Vision AI
           </p>
         </div>
 
@@ -194,7 +254,7 @@ export const DelhiMap = ({
 
         {/* Analytical Heatmap Overlay option */}
         {showAnalyticalHeatmap && (
-          <div className="absolute inset-0 bg-black/40 backdrop-blur-xs flex items-center justify-center pointer-events-none">
+          <div className="absolute inset-0 bg-black/40 backdrop-blur-xs flex items-center justify-center pointer-events-none z-10">
             <div className="p-4 rounded-xl bg-black/80 border border-cyan-500/30 text-cyan-300 text-xs font-mono">
               Analytical Heatmap Overlay Active • Selected Metric: {selectedMetric}
             </div>
@@ -270,38 +330,85 @@ export const DelhiMap = ({
 
       </div>
 
-      {/* LIVE SUBSTATION LAPTOP CAMERA FEED MODAL */}
+      {/* LIVE SUBSTATION LAPTOP CAMERA FEED & FIRE VISION AI MODAL */}
       {activeCameraSubstation && (
         <div className="fixed inset-0 z-50 bg-black/85 backdrop-blur-md flex items-center justify-center p-4 animate-fadeIn">
-          <div className="w-full max-w-2xl liquid-glass rounded-2xl border border-cyan-500/50 bg-black/95 overflow-hidden shadow-2xl flex flex-col">
+          <div className={`w-full max-w-2xl liquid-glass rounded-2xl border ${
+            fireResult?.fire_detected ? 'border-rose-500 shadow-[0_0_50px_rgba(244,63,94,0.6)] animate-pulse' : 'border-cyan-500/50'
+          } bg-black/95 overflow-hidden shadow-2xl flex flex-col transition-all`}>
             
             {/* Modal Header */}
-            <div className="p-4 bg-cyan-950/70 border-b border-white/10 flex items-center justify-between">
+            <div className={`p-4 border-b border-white/10 flex items-center justify-between ${
+              fireResult?.fire_detected ? 'bg-rose-950/80' : 'bg-cyan-950/70'
+            }`}>
               <div className="flex items-center gap-3">
-                <div className="p-2 rounded-xl bg-cyan-500/20 text-cyan-400 border border-cyan-500/40">
-                  <Video className="w-5 h-5 animate-pulse" />
+                <div className={`p-2 rounded-xl border ${
+                  fireResult?.fire_detected ? 'bg-rose-500/20 text-rose-400 border-rose-500/50' : 'bg-cyan-500/20 text-cyan-400 border-cyan-500/40'
+                }`}>
+                  {fireResult?.fire_detected ? <Flame className="w-5 h-5 animate-bounce text-rose-400" /> : <Video className="w-5 h-5 animate-pulse" />}
                 </div>
                 <div>
                   <h3 className="font-bold text-base text-white flex items-center gap-2">
                     <span>{activeCameraSubstation.name}</span>
-                    <span className="px-2 py-0.5 text-[10px] rounded bg-emerald-950 text-emerald-300 border border-emerald-500/40 uppercase font-mono">
-                      LIVE LAPTOP CAMERA FEED
+                    <span className={`px-2 py-0.5 text-[10px] rounded uppercase font-mono font-bold border ${
+                      fireResult?.fire_detected
+                        ? 'bg-rose-900 text-rose-200 border-rose-500 animate-pulse'
+                        : 'bg-emerald-950 text-emerald-300 border-emerald-500/40'
+                    }`}>
+                      {fireResult?.fire_detected ? '🔥 FIRE / SPARK DETECTED' : 'LIVE OPTICAL FEED'}
                     </span>
                   </h3>
                   <p className="text-xs text-gray-400">
-                    SLDC Inspection • DISCOM: {activeCameraSubstation.discom} • Voltage: {activeCameraSubstation.voltage} • Capacity: {activeCameraSubstation.capacityMW} MW
+                    SLDC Inspection • DISCOM: {activeCameraSubstation.discom} • Voltage: {activeCameraSubstation.voltage} • PyTorch Vision AI
                   </p>
                 </div>
               </div>
 
-              <button
-                type="button"
-                onClick={closeCameraModal}
-                className="p-2 rounded-xl bg-white/5 hover:bg-white/10 text-gray-400 hover:text-white transition-colors cursor-pointer"
-              >
-                <X className="w-5 h-5" />
-              </button>
+              <div className="flex items-center gap-2">
+                {/* SIMULATE SPARK / FIRE INCIDENT TOGGLE BUTTON */}
+                <button
+                  type="button"
+                  onClick={() => setSimulateFire(!simulateFire)}
+                  className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer flex items-center gap-1.5 border ${
+                    simulateFire
+                      ? 'bg-rose-600 hover:bg-rose-500 text-white border-rose-400 shadow-lg animate-pulse'
+                      : 'bg-white/10 hover:bg-rose-950 text-rose-300 border-rose-500/30'
+                  }`}
+                >
+                  <Flame className="w-3.5 h-3.5" />
+                  <span>{simulateFire ? 'Fire Simulated (Active)' : 'Simulate Spark/Fire'}</span>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={closeCameraModal}
+                  className="p-2 rounded-xl bg-white/5 hover:bg-white/10 text-gray-400 hover:text-white transition-colors cursor-pointer"
+                >
+                  <X className="w-5 h-5" />
+                </button>
+              </div>
             </div>
+
+            {/* CRITICAL FIRE / SPARK OUTBREAK ALERT BANNER */}
+            {fireResult?.fire_detected && (
+              <div className="bg-rose-600/90 text-white px-4 py-3 border-b border-rose-500 flex items-center justify-between animate-pulse">
+                <div className="flex items-center gap-3">
+                  <AlertTriangle className="w-6 h-6 text-yellow-300 shrink-0" />
+                  <div>
+                    <div className="font-extrabold text-sm uppercase tracking-wide">
+                      {fireResult.alert_message}
+                    </div>
+                    <div className="text-[11px] text-rose-100">
+                      PyTorch SubstationFireCNN Vision Confidence: <strong>{(fireResult.confidence * 100).toFixed(1)}%</strong> • High Thermal Hazard at {activeCameraSubstation.name}
+                    </div>
+                  </div>
+                </div>
+
+                <span className="px-2.5 py-1 rounded-md bg-black/40 text-yellow-300 font-mono text-[10px] font-bold uppercase border border-yellow-400/40">
+                  SLDC DISPATCH WARNING
+                </span>
+              </div>
+            )}
 
             {/* Video Feed Screen */}
             <div className="relative w-full h-[360px] bg-gray-950 flex items-center justify-center overflow-hidden border-b border-white/10">
@@ -336,25 +443,34 @@ export const DelhiMap = ({
                 </div>
               )}
 
+              {/* Real-time Fire Alert Red Screen Flash Filter */}
+              {fireResult?.fire_detected && (
+                <div className="absolute inset-0 bg-rose-500/20 border-4 border-rose-500 pointer-events-none animate-pulse" />
+              )}
+
               {/* Live HUD Overlay */}
               <div className="absolute top-3 left-3 bg-black/60 px-3 py-1.5 rounded-lg border border-white/10 text-[11px] font-mono text-cyan-300 flex items-center gap-2 backdrop-blur-sm pointer-events-none">
-                <span className="w-2 h-2 rounded-full bg-emerald-400 animate-ping"></span>
+                <span className={`w-2 h-2 rounded-full animate-ping ${fireResult?.fire_detected ? 'bg-rose-500' : 'bg-emerald-400'}`}></span>
                 <span>REC • SLDC-CAM-{activeCameraSubstation.id.toUpperCase()}</span>
               </div>
 
               <div className="absolute bottom-3 right-3 bg-black/60 px-3 py-1.5 rounded-lg border border-white/10 text-[10px] font-mono text-gray-300 flex items-center gap-3 backdrop-blur-sm pointer-events-none">
                 <span>FPS: 30.0</span>
                 <span>RES: 1280x720</span>
-                <span>STATUS: OPTIMAL</span>
+                <span className={fireResult?.fire_detected ? 'text-rose-400 font-bold' : 'text-emerald-400'}>
+                  FIRE AI: {isAnalyzingVision ? 'SCANNING...' : fireResult?.fire_detected ? 'FIRE DETECTED' : 'CLEAR'}
+                </span>
               </div>
             </div>
 
             {/* Modal Footer Telemetry */}
             <div className="p-4 bg-black/80 flex flex-col sm:flex-row sm:items-center justify-between gap-4 text-xs">
               <div className="flex items-center gap-4 text-gray-300">
-                <div className="flex items-center gap-1.5 text-emerald-400">
-                  <ShieldCheck className="w-4 h-4" />
-                  <span>Substation Telemetry: Normal</span>
+                <div className={`flex items-center gap-1.5 font-bold ${
+                  fireResult?.fire_detected ? 'text-rose-400' : 'text-emerald-400'
+                }`}>
+                  {fireResult?.fire_detected ? <Flame className="w-4 h-4 animate-bounce text-rose-400" /> : <ShieldCheck className="w-4 h-4" />}
+                  <span>{fireResult?.substation_status || 'Substation Telemetry: Normal'}</span>
                 </div>
                 <div>
                   <span>Current Load: </span>

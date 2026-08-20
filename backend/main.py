@@ -4,6 +4,7 @@ from pydantic import BaseModel
 from typing import Dict, Any, List, Optional
 from datetime import datetime
 import os
+import base64
 
 from backend.data.synthetic_delhi_data import SyntheticDelhiDataGenerator
 from backend.forecasting.openstef_adapter import OpenSTEFAdapter
@@ -17,11 +18,12 @@ from backend.forecasting.duck_curve_engine import DuckCurveEngine
 from backend.forecasting.ramp_engine import RampEngine
 from backend.forecasting.grid_stress_engine import GridStressEngine
 from backend.forecasting.chatbot_engine import URJADRISHTIChatbotEngine
+from backend.ai_models.fire_detector import FireDetectionEngine
 
 app = FastAPI(
     title="URJADRISHTI API",
-    description="AI-Powered Energy Intelligence for Delhi powered by OpenSTEF & Gemini AI",
-    version="0.5.0"
+    description="AI-Powered Energy Intelligence for Delhi powered by OpenSTEF, Gemini AI & PyTorch Fire Vision AI",
+    version="0.6.0"
 )
 
 # Enable CORS for local development
@@ -51,6 +53,7 @@ regional_engine = RegionalEngine(data_generator=data_generator)
 solar_provider = DemoSolarProvider(capacity_mw=1200.0)
 duck_curve_engine = DuckCurveEngine(solar_provider=solar_provider, data_generator=data_generator)
 chatbot_engine = URJADRISHTIChatbotEngine()
+fire_detection_engine = FireDetectionEngine(model_path="backend/ai_models/fire_model.pth")
 
 FORECAST_CACHE: Dict[str, Any] = {}
 
@@ -64,19 +67,25 @@ class ChatRequest(BaseModel):
     message: str
     history: Optional[List[Dict[str, str]]] = None
 
+class FireDetectRequest(BaseModel):
+    image_base64: str
+    substation_id: Optional[str] = "bawana_400"
+    simulate_fire: Optional[bool] = False
+
 @app.get("/")
 @app.get("/api/health")
 def health_check():
     demo_mode = os.getenv("DEMO_MODE", "true").lower() == "true"
     return {
         "status": "ok",
-        "version": "0.5.0",
+        "version": "0.6.0",
         "data_mode": "demo" if demo_mode else "live",
         "forecasting_service_status": "ready",
         "spatial_intelligence": "ready",
         "solar_grid_intelligence": "ready",
         "gemini_chatbot": "ready",
-        "framework": "OpenSTEF Adapter + Gemini AI Chat Engine",
+        "pytorch_fire_detection_vision_ai": "ready",
+        "framework": "OpenSTEF Adapter + Gemini AI + PyTorch SubstationFireCNN",
     }
 
 @app.get("/api/model-status")
@@ -84,6 +93,7 @@ def get_model_status():
     return {
         "model_name": "URJADRISHTI-OpenSTEF-Predictor",
         "version": "v2.4.0",
+        "vision_ai_model": "SubstationFireCNN (PyTorch 88.02% Accuracy)",
         "status": "ready",
         "data_mode": "demo",
         "last_trained": "2026-08-20T06:00:00Z",
@@ -276,6 +286,36 @@ def chat_with_urjadrishti(req: ChatRequest):
     if not req.message or not req.message.strip():
         raise HTTPException(status_code=400, detail="Message string cannot be empty.")
     return chatbot_engine.generate_response(message=req.message, history=req.history)
+
+# ==================== REAL-TIME FIRE & SPARK VISION AI API ====================
+
+@app.post("/api/vision/detect-fire")
+def detect_substation_fire(req: FireDetectRequest):
+    if req.simulate_fire:
+        return {
+            "fire_detected": True,
+            "confidence": 0.985,
+            "hazard_level": "CRITICAL",
+            "alert_message": "🔥 CRITICAL ALERT: SPARK OR FIRE DETECTED! CHANCE OF MAJOR OUTBREAK AT SUBSTATION!",
+            "substation_status": "FIRE HAZARD EMERGENCY",
+            "substation_id": req.substation_id
+        }
+
+    try:
+        clean_b64 = req.image_base64.split(",")[-1]
+        img_bytes = base64.b64decode(clean_b64)
+        result = fire_detection_engine.analyze_frame_bytes(img_bytes)
+        result["substation_id"] = req.substation_id
+        return result
+    except Exception as e:
+        return {
+            "fire_detected": False,
+            "confidence": 0.0,
+            "hazard_level": "ERROR",
+            "alert_message": f"Optical analysis error: {str(e)}",
+            "substation_status": "CAMERA MONITORING",
+            "substation_id": req.substation_id
+        }
 
 @app.get("/api/model-performance")
 def get_model_performance():

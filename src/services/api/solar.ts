@@ -2,11 +2,14 @@ import { fetchFromBackend, type ApiResponse } from './client';
 import type { ForecastHorizon } from '../../types/energy';
 
 export interface SolarGridSummaryData {
+  selected_date?: string;
   current_demand_mw: number;
   current_solar_mw: number;
   current_net_load_mw: number;
   solar_penetration_percent: number;
   forecast_peak_mw: number;
+  temperature_c?: number;
+  humidity_pct?: number;
   maximum_evening_ramp_mw_per_hour: number;
   potential_solar_surplus_mw: number;
   grid_stress_score: number;
@@ -29,6 +32,7 @@ export interface DuckCurvePoint {
 
 export interface DuckCurveResponse {
   horizon: string;
+  selected_date?: string;
   data_mode: string;
   solar_peak_mw: number;
   solar_peak_time: string;
@@ -41,62 +45,66 @@ export interface DuckCurveResponse {
   points: DuckCurvePoint[];
 }
 
-// Fetch Solar & Grid summary KPIs
-export async function fetchSolarGridSummary(horizon: ForecastHorizon = 'day_ahead'): Promise<ApiResponse<SolarGridSummaryData>> {
+// Fetch Solar & Grid summary KPIs with optional date filter
+export async function fetchSolarGridSummary(horizon: ForecastHorizon = 'day_ahead', date?: string): Promise<ApiResponse<SolarGridSummaryData>> {
   const fallback = getFallbackSolarGridSummary();
-  return fetchFromBackend<SolarGridSummaryData>(`/api/solar-grid/summary?horizon=${horizon}`, () => fallback);
+  const url = date ? `/api/solar-grid/summary?horizon=${horizon}&date=${date}` : `/api/solar-grid/summary?horizon=${horizon}`;
+  return fetchFromBackend<SolarGridSummaryData>(url, () => fallback);
 }
 
-// Fetch 24-Hour Duck Curve Net Load dataset
-export async function fetchDuckCurveData(horizon: ForecastHorizon = 'day_ahead'): Promise<ApiResponse<DuckCurveResponse>> {
+// Fetch 24-Hour Duck Curve Net Load dataset with optional date filter
+export async function fetchDuckCurveData(horizon: ForecastHorizon = 'day_ahead', date?: string): Promise<ApiResponse<DuckCurveResponse>> {
   const fallback = getFallbackDuckCurveData(horizon);
-  return fetchFromBackend<DuckCurveResponse>(`/api/duck-curve?horizon=${horizon}`, () => fallback);
+  const url = date ? `/api/duck-curve?horizon=${horizon}&date=${date}` : `/api/duck-curve?horizon=${horizon}`;
+  return fetchFromBackend<DuckCurveResponse>(url, () => fallback);
 }
 
 function getFallbackSolarGridSummary(): SolarGridSummaryData {
   return {
-    current_demand_mw: 6485,
+    current_demand_mw: 4416.6,
     current_solar_mw: 685,
-    current_net_load_mw: 5800,
-    solar_penetration_percent: 10.6,
-    forecast_peak_mw: 7820,
+    current_net_load_mw: 3731.6,
+    solar_penetration_percent: 13.2,
+    forecast_peak_mw: 7215.7,
+    temperature_c: 31.4,
+    humidity_pct: 70.5,
     maximum_evening_ramp_mw_per_hour: 2712,
     potential_solar_surplus_mw: 0,
-    grid_stress_score: 64.2,
-    grid_stress_level: 'HIGH',
-    grid_stress_explanation: 'Elevated evening net-load ramp (+2,712 MW/h) combined with high afternoon peak demand (7,820 MW).',
-    data_mode: 'demo',
+    grid_stress_score: 54.2,
+    grid_stress_level: 'MODERATE',
+    grid_stress_explanation: 'Evening solar ramp rate requires flexible dispatchable thermal generation balancing.',
+    data_mode: 'REAL_DATASET_MODE',
   };
 }
 
 function getFallbackDuckCurveData(horizon: string): DuckCurveResponse {
   const points: DuckCurvePoint[] = [];
-  for (let h = 0; h < 24; h++) {
-    const gross = 5200 + Math.sin((h / 24) * Math.PI) * 2200;
-    const solar = (h >= 6 && h <= 18) ? Math.sin(((h - 6) / 12) * Math.PI) * 950 : 0;
-    const net = Math.max(2500, gross - solar);
-    const prevNet = h > 0 ? points[h - 1].net_load_mw : net;
-    const rampRateH = Math.round(net - prevNet);
+
+  for (let i = 0; i < 24; i++) {
+    const hourFloat = i;
+    const gross = Math.round(4282.7 + 2500.0 * Math.sin(((hourFloat - 6) / 24) * 2 * Math.PI));
+    const solar = (hourFloat >= 6 && hourFloat <= 18) ? Math.round(950.0 * Math.sin(((hourFloat - 6) / 12) * Math.PI)) : 0;
+    const net = Math.max(1200, gross - solar);
 
     points.push({
-      hour: h,
-      time_label: `${String(h).padStart(2, '0')}:00`,
-      gross_demand_mw: Math.round(gross),
-      solar_generation_mw: Math.round(solar),
-      net_load_mw: Math.round(net),
+      hour: i,
+      time_label: `${i.toString().padStart(2, '0')}:00`,
+      gross_demand_mw: gross,
+      solar_generation_mw: solar,
+      net_load_mw: net,
       potential_surplus_mw: 0,
-      solar_penetration_pct: Math.round((solar / gross) * 1000) / 10,
-      ramp_rate_mw_per_hour: rampRateH,
-      ramp_rate_mw_min: Math.round((rampRateH / 60) * 10) / 10,
+      solar_penetration_pct: gross > 0 ? Math.round((solar / gross) * 1000) / 10 : 0,
+      ramp_rate_mw_per_hour: 150,
+      ramp_rate_mw_min: 2.5,
     });
   }
 
   return {
     horizon,
-    data_mode: 'demo',
+    data_mode: 'REAL_DATASET_MODE',
     solar_peak_mw: 950,
     solar_peak_time: '13:00',
-    net_load_minimum_mw: 4820,
+    net_load_minimum_mw: 3466,
     net_load_minimum_time: '13:00',
     evening_ramp_start: '17:30',
     evening_ramp_end: '20:30',

@@ -1,10 +1,10 @@
 """
 URJADRISHTI — OpenSTEF Framework Adapter
 Encapsulates OpenSTEF operational machine learning pipelines for day-ahead and short-term electricity demand forecasting.
-Ingests from RealPowerDemandEngine (Power Demand Data.csv).
+Ingests from RealPowerDemandEngine with 2026 Calendar date filtering.
 """
 
-from typing import Dict, Any, List
+from typing import Dict, Any, List, Optional
 from backend.data.real_power_demand import RealPowerDemandEngine
 
 class OpenSTEFAdapter:
@@ -18,26 +18,27 @@ class OpenSTEFAdapter:
         self.model_name = "OpenSTEF LightGBM Predictor v2.4 (Power Demand Data.csv Trained)"
         self.framework_version = "OpenSTEF v0.9.1"
 
-    def predict_day_ahead(self, params: Dict[str, Any] = None) -> List[Dict[str, Any]]:
+    def predict_day_ahead(self, params: Dict[str, Any] = None, target_date: Optional[str] = None) -> List[Dict[str, Any]]:
         """
         Executes OpenSTEF Day-Ahead forecast pipeline (1–7 Days horizon).
         """
-        return self.data_generator.get_interval_data(horizon="day_ahead")
+        return self.data_generator.get_interval_data(horizon="day_ahead", target_date_str=target_date)
 
-    def predict_short_term(self, params: Dict[str, Any] = None) -> List[Dict[str, Any]]:
+    def predict_short_term(self, params: Dict[str, Any] = None, target_date: Optional[str] = None) -> List[Dict[str, Any]]:
         """
         Executes OpenSTEF Short-Term forecast pipeline (15m–6h horizon).
         """
-        return self.data_generator.get_interval_data(horizon="short_term")
+        return self.data_generator.get_interval_data(horizon="short_term", target_date_str=target_date)
 
-    def get_eval_metrics(self) -> Dict[str, Any]:
+    def get_eval_metrics(self, target_date: Optional[str] = None) -> Dict[str, Any]:
         """
         Returns OpenSTEF model telemetry and performance evaluation metrics calibrated on 24,312 CSV dataset rows.
         """
-        summary = self.data_generator.get_summary_metrics()
+        summary = self.data_generator.get_summary_metrics(target_date)
         return {
             "model_name": self.model_name,
             "framework": self.framework_version,
+            "target_date": summary.get("target_date", "2026-08-20"),
             "status": "OPERATIONAL",
             "mae_mw": 58.4,
             "mape_percent": 1.18,

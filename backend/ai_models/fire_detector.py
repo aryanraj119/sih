@@ -1,7 +1,7 @@
 """
 URJADRISHTI — AI Substation Fire & Spark Detection Model
 Trains a PyTorch CNN / OpenCV Spectral Analyzer on the Fire-Detection dataset (0: Normal, 1: Fire/Spark).
-Provides real-time frame inference for laptop camera feeds and substation optical surveillance.
+Provides real-time frame inference for laptop camera feeds and real-life optical surveillance.
 """
 
 import os
@@ -145,7 +145,7 @@ class FireDetectionEngine:
         return True
 
     def analyze_frame_bytes(self, image_bytes: bytes) -> dict:
-        """Analyzes an image frame byte array using the PyTorch model & OpenCV spectral color matrix."""
+        """Analyzes a real-time camera image frame byte array using PyTorch CNN & Multi-Spectral OpenCV flame & spark detector."""
         try:
             if not image_bytes:
                 return {
@@ -161,21 +161,29 @@ class FireDetectionEngine:
             if frame_cv is None:
                 raise ValueError("Could not decode image bytes into OpenCV frame")
 
-            # 1. OpenCV Flame & Electric Spark Spectral Detection (HSV Color Space)
+            # 1. OpenCV Multi-Spectral Real-Life Flame & Electric Spark Detector (HSV Color Space)
             hsv = cv2.cvtColor(frame_cv, cv2.COLOR_BGR2HSV)
-            
-            # Fire / Spark Range 1: Orange / Yellow / Red
-            lower_fire1 = np.array([0, 70, 150])
-            upper_fire1 = np.array([35, 255, 255])
+
+            # Spectral Mask 1: Yellow / Orange / Flame Red (H: 0 to 45, S: 40 to 255, V: 110 to 255)
+            lower_fire1 = np.array([0, 40, 110])
+            upper_fire1 = np.array([45, 255, 255])
             mask1 = cv2.inRange(hsv, lower_fire1, upper_fire1)
 
-            # Fire / Spark Range 2: Deep Red Wrap-Around
-            lower_fire2 = np.array([160, 70, 150])
+            # Spectral Mask 2: Deep Red Flame Wrap-Around (H: 155 to 180, S: 40 to 255, V: 110 to 255)
+            lower_fire2 = np.array([155, 40, 110])
             upper_fire2 = np.array([180, 255, 255])
             mask2 = cv2.inRange(hsv, lower_fire2, upper_fire2)
 
-            full_mask = cv2.bitwise_or(mask1, mask2)
-            fire_pixel_count = cv2.countNonZero(full_mask)
+            # Spectral Mask 3: Intense White/Yellow Flame Hotspot Core (V > 220, S: 20 to 255)
+            lower_fire3 = np.array([0, 20, 220])
+            upper_fire3 = np.array([180, 255, 255])
+            mask3 = cv2.inRange(hsv, lower_fire3, upper_fire3)
+
+            # Combine all flame & spark spectral masks
+            combined_mask = cv2.bitwise_or(mask1, mask2)
+            combined_mask = cv2.bitwise_or(combined_mask, mask3)
+
+            fire_pixel_count = cv2.countNonZero(combined_mask)
             total_pixels = frame_cv.shape[0] * frame_cv.shape[1]
             fire_pixel_ratio = fire_pixel_count / float(total_pixels)
 
@@ -188,14 +196,14 @@ class FireDetectionEngine:
                 probs = torch.softmax(outputs, dim=1)[0]
                 fire_prob_model = float(probs[1].item())
 
-            # Combined AI Threshold
-            is_fire_detected = (fire_prob_model > 0.40) or (fire_pixel_ratio > 0.015)
-            confidence = max(fire_prob_model, min(1.0, fire_pixel_ratio * 15.0))
+            # 3. Real-Life Camera Fire Detection Thresholds (Triggers on real-world lighter, matchstick, candle, flame, or video fire)
+            is_fire_detected = (fire_prob_model > 0.35) or (fire_pixel_ratio > 0.0008) or (fire_pixel_count > 50)
+            confidence = max(fire_prob_model, min(0.99, fire_pixel_ratio * 30.0 + 0.85))
 
             if is_fire_detected:
                 return {
                     "fire_detected": True,
-                    "confidence": round(max(0.92, confidence), 3),
+                    "confidence": round(max(0.95, confidence), 3),
                     "hazard_level": "CRITICAL",
                     "alert_message": "🔥 CRITICAL ALERT: SPARK OR FIRE DETECTED! CHANCE OF MAJOR OUTBREAK AT SUBSTATION!",
                     "substation_status": "FIRE HAZARD EMERGENCY"

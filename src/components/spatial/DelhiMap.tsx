@@ -111,7 +111,7 @@ export const DelhiMap = ({
     };
   }, [activeCameraSubstation]);
 
-  // Real-Time Vision AI Fire & Spark Detector Hook
+  // Real-Time Real-Life Vision AI Fire & Spark Detector Hook (Fast 500ms Frame Scan)
   useEffect(() => {
     let intervalId: any = null;
 
@@ -132,7 +132,8 @@ export const DelhiMap = ({
           }
 
           let b64Frame = '';
-          if (videoRef.current && canvasRef.current && isCameraActive) {
+          // Ensure video element has active video frame pixels (readyState >= 2)
+          if (videoRef.current && videoRef.current.readyState >= 2 && canvasRef.current) {
             const video = videoRef.current;
             const canvas = canvasRef.current;
             canvas.width = 320;
@@ -140,7 +141,7 @@ export const DelhiMap = ({
             const ctx = canvas.getContext('2d');
             if (ctx) {
               ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
-              b64Frame = canvas.toDataURL('image/jpeg', 0.7);
+              b64Frame = canvas.toDataURL('image/jpeg', 0.75);
             }
           }
 
@@ -161,7 +162,7 @@ export const DelhiMap = ({
       };
 
       runVisionScan();
-      intervalId = setInterval(runVisionScan, 1500);
+      intervalId = setInterval(runVisionScan, 500);
     }
 
     return () => {
@@ -507,7 +508,7 @@ export const DelhiMap = ({
 
               <div className="absolute bottom-3 right-3 bg-black/60 px-3 py-1.5 rounded-lg border border-white/10 text-[10px] font-mono text-gray-300 flex items-center gap-3 backdrop-blur-sm pointer-events-none">
                 <span>FPS: 30.0</span>
-                <span>RES: 1280x720</span>
+                <span>SCAN: 500ms</span>
                 <span className={fireResult?.fire_detected ? 'text-rose-400 font-bold animate-pulse' : 'text-emerald-400'}>
                   FIRE AI: {isAnalyzingVision ? 'SCANNING...' : fireResult?.fire_detected ? '🔥 FIRE DETECTED' : 'CLEAR'}
                 </span>

@@ -3,7 +3,8 @@ import { NavLink, useLocation } from 'react-router-dom';
 import { getLiveDelhiGridStatus } from '../../services/api';
 import { DataModeBadge } from '../dashboard/DataModeBadge';
 import { useDate } from '../../context/DateContext';
-import { Zap, Menu, X, Activity, Calendar } from 'lucide-react';
+import { UrjadrishtiLogoIcon } from '../common/UrjadrishtiLogoIcon';
+import { Menu, X, Activity, Calendar } from 'lucide-react';
 
 export const Navbar = () => {
   const [isMobileOpen, setIsMobileOpen] = useState(false);
@@ -65,10 +66,10 @@ export const Navbar = () => {
     <header className="w-full px-4 md:px-8 lg:px-12 pt-4 relative z-50">
       <nav className="liquid-glass rounded-2xl px-5 py-3 flex items-center justify-between border border-white/10 shadow-2xl">
         
-        {/* Brand Logo & Tag */}
+        {/* Official URJADRISHTI Brand Logo & Tag */}
         <NavLink to="/" className="flex items-center gap-3 group shrink-0">
-          <div className="w-9 h-9 rounded-xl bg-gradient-to-tr from-cyan-500 to-emerald-400 flex items-center justify-center text-black font-bold shadow-lg shadow-cyan-500/20 group-hover:scale-105 transition-transform">
-            <Zap className="w-5 h-5 fill-black" />
+          <div className="w-10 h-10 rounded-xl bg-gradient-to-tr from-cyan-950 via-slate-900 to-emerald-950 p-1 flex items-center justify-center border border-cyan-500/40 shadow-lg shadow-cyan-500/20 group-hover:scale-105 transition-transform">
+            <UrjadrishtiLogoIcon className="w-8 h-8" />
           </div>
           <div className="flex flex-col">
             <div className="flex items-baseline gap-2">

@@ -7,6 +7,8 @@ import type {
   ModelTelemetry,
 } from '../types/energy';
 
+export * from './api/index';
+
 // Mock Delhi SLDC Live Grid Status
 export const getLiveDelhiGridStatus = () => {
   return {
@@ -33,7 +35,6 @@ export const getForecastData = (horizon: ForecastHorizon): DemandDataPoint[] => 
       const stepTime = new Date(now.getTime() + i * 15 * 60 * 1000);
       const timeStr = stepTime.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
       
-      // Simulate evening ramp peak pattern
       const rampFactor = Math.sin((i / 24) * Math.PI) * 850;
       const noise = (Math.random() - 0.5) * 40;
       const pred = Math.round(baseMW + rampFactor + noise);
@@ -54,7 +55,6 @@ export const getForecastData = (horizon: ForecastHorizon): DemandDataPoint[] => 
   }
 
   if (horizon === 'day_ahead') {
-    // 1 to 7 Days hourly / key diurnal points (7 days, 24h diurnal curve)
     const points: DemandDataPoint[] = [];
     const days = ['Today', 'Day 2', 'Day 3', 'Day 4', 'Day 5', 'Day 6', 'Day 7'];
     const hours = ['00:00', '04:00', '08:00', '12:00', '16:00', '20:00', '23:00'];
@@ -83,19 +83,18 @@ export const getForecastData = (horizon: ForecastHorizon): DemandDataPoint[] => 
     return points;
   }
 
-  // 1 to 5 Years spatial growth horizon
   const years = ['2026', '2027', '2028', '2029', '2030'];
   const baseGrowth = 8350;
   return years.map((yr, idx) => {
-    const growthMW = Math.round(baseGrowth * Math.pow(1.062, idx)); // 6.2% annual growth
+    const growthMW = Math.round(baseGrowth * Math.pow(1.062, idx));
     return {
       time: yr,
       predictedMW: growthMW,
       upperConfidence: Math.round(growthMW * 1.05),
       lowerConfidence: Math.round(growthMW * 0.95),
-      temperature: 38 + idx * 0.2, // climate warming factor
+      temperature: 38 + idx * 0.2,
       humidity: 55,
-      solarGenerationMW: Math.round(800 + idx * 350), // solar capacity additions
+      solarGenerationMW: Math.round(800 + idx * 350),
     };
   });
 };
@@ -106,44 +105,60 @@ export const getDiscomData = (): DiscomData[] => {
     {
       id: 'brpl',
       name: 'BSES Rajdhani Power Ltd',
-      code: 'BRPL',
-      region: 'South & West Delhi',
+      shortName: 'BRPL',
+      fullName: 'BSES Rajdhani Power Ltd',
+      status: 'Normal',
       currentLoadMW: 3240,
+      peakMW: 3680,
       capacityMW: 3900,
-      peakLoadMW: 3680,
-      solarMW: 420,
-      evStations: 850,
-      substations: 94,
-      healthStatus: 'Optimal',
-      color: '#3B82F6',
+      gridCapacityMW: 3900,
+      solarCapacityMW: 420,
+      evChargerCount: 850,
+      coverageArea: 'South & West Delhi',
+      consumerCount: '2.8 Million',
+      substations: [
+        { name: 'Okhla 220kV Substation', voltage: '220kV', loadMW: 420, utilisationPct: 84, status: 'Optimal' },
+        { name: 'Vasant Kunj 66kV Grid', voltage: '66kV', loadMW: 180, utilisationPct: 90, status: 'Alert' },
+        { name: 'Janakpuri 220kV Line', voltage: '220kV', loadMW: 380, utilisationPct: 76, status: 'Optimal' },
+      ],
     },
     {
       id: 'bypl',
       name: 'BSES Yamuna Power Ltd',
-      code: 'BYPL',
-      region: 'Central & East Delhi',
+      shortName: 'BYPL',
+      fullName: 'BSES Yamuna Power Ltd',
+      status: 'Alert',
       currentLoadMW: 1820,
+      peakMW: 2050,
       capacityMW: 2200,
-      peakLoadMW: 2050,
-      solarMW: 180,
-      evStations: 410,
-      substations: 52,
-      healthStatus: 'Alert',
-      color: '#10B981',
+      gridCapacityMW: 2200,
+      solarCapacityMW: 180,
+      evChargerCount: 410,
+      coverageArea: 'Central & East Delhi',
+      consumerCount: '1.7 Million',
+      substations: [
+        { name: 'Laxmi Nagar 220kV Grid', voltage: '220kV', loadMW: 310, utilisationPct: 88, status: 'Alert' },
+        { name: 'Chandni Chowk 66kV Line', voltage: '66kV', loadMW: 140, utilisationPct: 82, status: 'Optimal' },
+      ],
     },
     {
       id: 'tpddl',
       name: 'Tata Power Delhi Distribution Ltd',
-      code: 'TPDDL',
-      region: 'North & North-West Delhi',
+      shortName: 'TPDDL',
+      fullName: 'Tata Power Delhi Distribution Ltd',
+      status: 'Normal',
       currentLoadMW: 2150,
+      peakMW: 2460,
       capacityMW: 2600,
-      peakLoadMW: 2460,
-      solarMW: 310,
-      evStations: 620,
-      substations: 68,
-      healthStatus: 'Optimal',
-      color: '#F59E0B',
+      gridCapacityMW: 2600,
+      solarCapacityMW: 310,
+      evChargerCount: 620,
+      coverageArea: 'North & North-West Delhi',
+      consumerCount: '2.0 Million',
+      substations: [
+        { name: 'Pitampura 220kV Substation', voltage: '220kV', loadMW: 390, utilisationPct: 78, status: 'Optimal' },
+        { name: 'Model Town 66kV Grid', voltage: '66kV', loadMW: 190, utilisationPct: 79, status: 'Optimal' },
+      ],
     },
   ];
 };
@@ -155,31 +170,30 @@ export const getDuckCurveData = (): DuckCurveDataPoint[] => {
   for (let hour = 0; hour < 24; hour++) {
     const timeStr = `${hour.toString().padStart(2, '0')}:00`;
     
-    // Diurnal base gross demand profile
     let gross = 4800;
     if (hour >= 6 && hour <= 10) gross += (hour - 6) * 350;
     else if (hour > 10 && hour <= 16) gross += 1400 + Math.sin((hour - 10) / 6 * Math.PI) * 400;
     else if (hour > 16 && hour <= 22) gross += 1600 - (hour - 16) * 150;
     else gross -= (hour - 22 > 0 ? hour - 22 : hour + 2) * 120;
 
-    // Solar Bell Curve peaking at 13:00
     let solar = 0;
     if (hour >= 6 && hour <= 18) {
       solar = Math.round(950 * Math.sin(((hour - 6) / 12) * Math.PI));
     }
 
     const net = Math.max(2500, gross - solar);
-    
-    // Calculate ramp rate (MW/min)
     const prevNet = hour > 0 ? points[hour - 1].netDemandMW : net;
     const rampRate = Math.round(((net - prevNet) / 60) * 10) / 10;
 
     points.push({
-      time: timeStr,
+      hour,
+      hourLabel: timeStr,
       grossDemandMW: Math.round(gross),
-      solarGenMW: solar,
+      solarGenerationMW: solar,
+      solarGeneration: solar,
       netDemandMW: Math.round(net),
       rampRateMWMin: rampRate,
+      rampRateMWPerMin: rampRate,
     });
   }
   
@@ -189,18 +203,12 @@ export const getDuckCurveData = (): DuckCurveDataPoint[] => {
 // Real-time AI Scenario Simulator calculation
 export const runScenarioSimulation = (inputs: ScenarioInputs): DemandDataPoint[] => {
   const baseline = getForecastData('short_term');
+  const tempVar = inputs.tempAnomalyC ?? inputs.tempAnomaly ?? 0;
   
   return baseline.map((pt) => {
-    // Heatwave effect: 1°C temp increase = +280 MW load boost in Delhi
-    const tempImpact = inputs.tempAnomaly * 280;
-    
-    // EV Adoption: % penetration adds charging demand
+    const tempImpact = tempVar * 280;
     const evImpact = (inputs.evAdoptionPct / 10) * 220;
-    
-    // Solar Capacity: offsets daylight hours demand
     const solarOffset = (inputs.solarCapacityMW / 1000) * (pt.solarGenerationMW || 0);
-
-    // GDP Growth factor
     const gdpFactor = 1 + (inputs.gdpGrowthPct - 6) * 0.015;
 
     const simulatedPred = Math.round((pt.predictedMW + tempImpact + evImpact - solarOffset) * gdpFactor);
@@ -218,16 +226,21 @@ export const runScenarioSimulation = (inputs: ScenarioInputs): DemandDataPoint[]
 export const getModelTelemetry = (): ModelTelemetry => {
   return {
     mae: 84.2,
+    maeMW: 84.2,
     mape: 1.38,
+    mapePercent: 1.38,
     rmse: 112.5,
+    rmseMW: 112.5,
+    p10P90CoveragePct: 94.8,
     lastTrained: '2026-08-19 18:00 UTC',
-    trainingSamples: 145200,
+    lastRetrainedUTC: '2026-08-19T18:00:00Z',
+    sampleCount: 145200,
     featureImportance: [
-      { feature: 'Temperature (°C)', importancePct: 38.5 },
-      { feature: 'Historical Demand (t-1..t-24)', importancePct: 26.2 },
-      { feature: 'Humidity & Dew Point', importancePct: 14.8 },
-      { feature: 'Day of Week / Holiday Flag', importancePct: 11.5 },
-      { feature: 'Solar Radiation (W/m²)', importancePct: 9.0 },
+      { feature: 'Temperature (°C)', importance_pct: 38.5 },
+      { feature: 'Historical Demand (t-1..t-24)', importance_pct: 26.2 },
+      { feature: 'Humidity & Dew Point', importance_pct: 14.8 },
+      { feature: 'Day of Week / Holiday Flag', importance_pct: 11.5 },
+      { feature: 'Solar Radiation (W/m²)', importance_pct: 9.0 },
     ],
   };
 };

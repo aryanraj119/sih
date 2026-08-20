@@ -1,16 +1,54 @@
-import { useState } from 'react';
-import { getDiscomData } from '../services/api';
+import { useState, useEffect } from 'react';
+import { fetchRegions } from '../services/api';
 import type { DiscomData } from '../types/energy';
-import { MapPin, Zap, Sun, Car, Activity, AlertTriangle, CheckCircle2 } from 'lucide-react';
+import { DataModeBadge } from '../components/dashboard/DataModeBadge';
+import { LoadingState } from '../components/dashboard/LoadingState';
+import { ErrorState } from '../components/dashboard/ErrorState';
+import { MapPin, Zap, AlertTriangle, ShieldCheck } from 'lucide-react';
 
 export const PowerIntelligencePage = () => {
-  const discoms = getDiscomData();
-  const [selectedDiscom, setSelectedDiscom] = useState<DiscomData>(discoms[0]);
+  const [discoms, setDiscoms] = useState<DiscomData[]>([]);
+  const [selectedDiscomId, setSelectedDiscomId] = useState<string>('brpl');
+  const [loading, setLoading] = useState<boolean>(true);
+  const [error, setError] = useState<string | null>(null);
+  const [isDemoMode, setIsDemoMode] = useState<boolean>(true);
 
-  const totalLoad = discoms.reduce((acc, d) => acc + d.currentLoadMW, 0);
-  const totalCapacity = discoms.reduce((acc, d) => acc + d.capacityMW, 0);
-  const totalSolar = discoms.reduce((acc, d) => acc + d.solarMW, 0);
-  const totalEV = discoms.reduce((acc, d) => acc + d.evStations, 0);
+  const loadData = async () => {
+    setLoading(true);
+    setError(null);
+    try {
+      const response = await fetchRegions();
+      if (response.data) {
+        setDiscoms(response.data);
+        setIsDemoMode(response.isDemoMode);
+      }
+      if (response.error) {
+        setError(response.error);
+      }
+    } catch (err: any) {
+      setError('Failed to fetch spatial regional telemetry.');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    loadData();
+  }, []);
+
+  const selectedDiscom = discoms.find((d) => d.id === selectedDiscomId) || discoms[0];
+
+  const analyticalRegions = [
+    { name: 'North Delhi', discom: 'TPDDL', load: '1,150 MW', peak: '1,320 MW', status: 'Optimal' },
+    { name: 'North-West Delhi', discom: 'TPDDL', load: '1,000 MW', peak: '1,140 MW', status: 'Optimal' },
+    { name: 'North-East Delhi', discom: 'BYPL', load: '580 MW', peak: '660 MW', status: 'Alert' },
+    { name: 'West Delhi', discom: 'BRPL', load: '1,420 MW', peak: '1,610 MW', status: 'Optimal' },
+    { name: 'Central Delhi', discom: 'BYPL', load: '640 MW', peak: '730 MW', status: 'Optimal' },
+    { name: 'South Delhi', discom: 'BRPL', load: '1,820 MW', peak: '2,070 MW', status: 'Optimal' },
+    { name: 'South-East Delhi', discom: 'BRPL', load: '880 MW', peak: '990 MW', status: 'Optimal' },
+    { name: 'South-West Delhi', discom: 'BRPL', load: '1,250 MW', peak: '1,420 MW', status: 'Optimal' },
+    { name: 'East Delhi', discom: 'BYPL', load: '600 MW', peak: '660 MW', status: 'Alert' },
+  ];
 
   return (
     <div className="w-full min-h-screen bg-black text-white px-4 md:px-8 lg:px-12 pt-8 pb-16">
@@ -18,226 +56,198 @@ export const PowerIntelligencePage = () => {
       {/* Header Banner */}
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-8">
         <div>
-          <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-emerald-950/60 border border-emerald-500/30 text-emerald-300 text-xs font-semibold uppercase tracking-wider mb-2">
-            <MapPin className="w-3.5 h-3.5 text-emerald-400" />
-            Spatial Grid Analytics
+          <div className="flex items-center gap-2 mb-2">
+            <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-cyan-950/60 border border-cyan-500/30 text-cyan-300 text-xs font-semibold uppercase tracking-wider">
+              <MapPin className="w-3.5 h-3.5 text-cyan-400" />
+              Spatial Grid Intelligence
+            </div>
+            <DataModeBadge isDemoMode={isDemoMode} />
           </div>
           <h1 className="text-3xl md:text-4xl font-bold tracking-tight text-white">
-            Delhi DISCOM Power Intelligence
+            Delhi DISCOM Zonal Power Intelligence
           </h1>
           <p className="text-sm text-gray-400 mt-1">
-            Zonal electricity demand, sub-station congestion, and EV/Solar infrastructure across Delhi
+            Zonal demand distribution across BRPL, BYPL, and TPDDL distribution corridors
           </p>
         </div>
+      </div>
 
-        <div className="flex items-center gap-3">
-          <div className="liquid-glass px-4 py-2 rounded-xl border border-white/10 text-xs flex items-center gap-2">
-            <span className="text-gray-400">Total Delhi Demand:</span>
-            <span className="font-bold text-cyan-400 text-sm">{totalLoad.toLocaleString()} MW</span>
+      {loading && <LoadingState message="Loading spatial DISCOM telemetry..." className="mb-8" />}
+      {error && !loading && <ErrorState message={error} onRetry={loadData} className="mb-8" />}
+
+      {!loading && selectedDiscom && (
+        <>
+          {/* DISCOM Switcher Tabs */}
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-8">
+            {discoms.map((d) => {
+              const isSelected = d.id === selectedDiscomId;
+              return (
+                <button
+                  key={d.id}
+                  type="button"
+                  onClick={() => setSelectedDiscomId(d.id)}
+                  className={`p-5 rounded-2xl border text-left transition-all cursor-pointer flex flex-col justify-between ${
+                    isSelected
+                      ? 'liquid-glass border-cyan-400/80 bg-cyan-950/30 text-white ring-1 ring-cyan-500/30 shadow-lg shadow-cyan-500/10'
+                      : 'liquid-glass border-white/10 text-gray-300 hover:border-white/20'
+                  }`}
+                >
+                  <div>
+                    <div className="flex items-center justify-between mb-2">
+                      <span className="text-lg font-bold text-white tracking-tight">{d.shortName}</span>
+                      <span className={`text-[10px] font-bold px-2 py-0.5 rounded border uppercase ${
+                        d.status === 'Normal' ? 'bg-emerald-950/60 border-emerald-500/40 text-emerald-300' : 'bg-amber-950/60 border-amber-500/40 text-amber-300'
+                      }`}>
+                        {d.status}
+                      </span>
+                    </div>
+
+                    <div className="text-xs text-gray-400 mb-3">{d.fullName}</div>
+
+                    <div className="grid grid-cols-2 gap-2 text-xs border-t border-white/10 pt-3">
+                      <div>
+                        <div className="text-[10px] text-gray-500">Current Load</div>
+                        <div className="font-bold text-cyan-400 text-sm">{d.currentLoadMW.toLocaleString()} MW</div>
+                      </div>
+                      <div>
+                        <div className="text-[10px] text-gray-500">All-Time Peak</div>
+                        <div className="font-bold text-white text-sm">{d.peakMW.toLocaleString()} MW</div>
+                      </div>
+                    </div>
+                  </div>
+                </button>
+              );
+            })}
           </div>
-        </div>
-      </div>
 
-      {/* DISCOM Overview Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
-        {discoms.map((discom) => {
-          const isSelected = selectedDiscom.id === discom.id;
-          const loadPct = Math.round((discom.currentLoadMW / discom.capacityMW) * 100);
-
-          return (
-            <button
-              key={discom.id}
-              onClick={() => setSelectedDiscom(discom)}
-              className={`liquid-glass p-6 rounded-2xl border text-left transition-all cursor-pointer ${
-                isSelected
-                  ? 'border-cyan-500 bg-cyan-950/20 ring-1 ring-cyan-500/30'
-                  : 'border-white/10 hover:border-white/20'
-              }`}
-            >
-              <div className="flex items-center justify-between mb-3">
-                <span className="text-xs font-bold px-2.5 py-1 rounded-md bg-white/10 text-white tracking-wide">
-                  {discom.code}
-                </span>
-                <span className={`text-[11px] font-semibold px-2 py-0.5 rounded flex items-center gap-1 ${
-                  discom.healthStatus === 'Optimal'
-                    ? 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/30'
-                    : 'bg-amber-500/20 text-amber-300 border border-amber-500/30'
-                }`}>
-                  {discom.healthStatus === 'Optimal' ? <CheckCircle2 className="w-3 h-3" /> : <AlertTriangle className="w-3 h-3" />}
-                  {discom.healthStatus}
-                </span>
-              </div>
-
-              <h3 className="text-lg font-bold text-white mb-1">{discom.name}</h3>
-              <p className="text-xs text-gray-400 mb-4">{discom.region}</p>
-
-              {/* Progress Bar */}
-              <div className="space-y-1.5">
-                <div className="flex justify-between text-xs">
-                  <span className="text-gray-400">Capacity Load</span>
-                  <span className="font-semibold text-white">{discom.currentLoadMW} / {discom.capacityMW} MW ({loadPct}%)</span>
+          {/* Detailed Selected DISCOM Panel */}
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-8">
+            
+            {/* Left 2 Cols: Substation Layout & Metrics */}
+            <div className="liquid-glass p-6 rounded-2xl border border-white/10 lg:col-span-2">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
+                <div>
+                  <h2 className="text-xl font-bold text-white flex items-center gap-2">
+                    <Zap className="w-5 h-5 text-cyan-400" />
+                    {selectedDiscom.fullName} Grid Status
+                  </h2>
+                  <p className="text-xs text-gray-400 mt-0.5">
+                    Coverage Area: <strong className="text-white">{selectedDiscom.coverageArea}</strong> | Total Consumers: <strong className="text-white">{selectedDiscom.consumerCount}</strong>
+                  </p>
                 </div>
-                <div className="w-full h-2 bg-white/10 rounded-full overflow-hidden">
-                  <div
-                    className={`h-full transition-all duration-500 ${
-                      loadPct > 80 ? 'bg-amber-500' : 'bg-cyan-400'
-                    }`}
-                    style={{ width: `${loadPct}%` }}
-                  ></div>
+
+                <div className="flex items-center gap-2">
+                  <span className="text-xs text-gray-400">Substation Health:</span>
+                  <span className="text-xs font-bold text-emerald-400 flex items-center gap-1">
+                    <ShieldCheck className="w-3.5 h-3.5" /> 99.4% Operational
+                  </span>
                 </div>
               </div>
-            </button>
-          );
-        })}
-      </div>
 
-      {/* Selected DISCOM Zonal Deep Dive */}
-      <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
-        
-        {/* Left Column: Spatial Grid Map Representation */}
-        <div className="lg:col-span-7 liquid-glass p-6 rounded-2xl border border-white/10 flex flex-col justify-between">
-          <div>
-            <div className="flex items-center justify-between mb-4 border-b border-white/10 pb-3">
+              {/* DISCOM KPIs */}
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 mb-6">
+                <div className="p-3 rounded-xl bg-white/5 border border-white/5">
+                  <div className="text-[10px] text-gray-400">Current Load</div>
+                  <div className="text-lg font-bold text-cyan-400">{selectedDiscom.currentLoadMW.toLocaleString()} MW</div>
+                  <div className="text-[10px] text-gray-400">Cap: {selectedDiscom.gridCapacityMW.toLocaleString()} MW</div>
+                </div>
+
+                <div className="p-3 rounded-xl bg-white/5 border border-white/5">
+                  <div className="text-[10px] text-gray-400">Capacity Utilisation</div>
+                  <div className="text-lg font-bold text-emerald-400">
+                    {Math.round((selectedDiscom.currentLoadMW / selectedDiscom.gridCapacityMW) * 100)}%
+                  </div>
+                  <div className="text-[10px] text-gray-400">Within Thermal Limits</div>
+                </div>
+
+                <div className="p-3 rounded-xl bg-white/5 border border-white/5">
+                  <div className="text-[10px] text-gray-400">Solar Penetration</div>
+                  <div className="text-lg font-bold text-amber-400">{selectedDiscom.solarCapacityMW} MW</div>
+                  <div className="text-[10px] text-gray-400">Rooftop Generation</div>
+                </div>
+
+                <div className="p-3 rounded-xl bg-white/5 border border-white/5">
+                  <div className="text-[10px] text-gray-400">Public EV Chargers</div>
+                  <div className="text-lg font-bold text-white">{selectedDiscom.evChargerCount}</div>
+                  <div className="text-[10px] text-gray-400">Active Stations</div>
+                </div>
+              </div>
+
+              {/* Primary Substations Table */}
+              <h3 className="text-xs font-bold text-gray-400 uppercase tracking-wider mb-3">
+                Major Grid Substations (66kV / 220kV)
+              </h3>
+
+              <div className="space-y-2">
+                {selectedDiscom.substations.map((sub, idx) => (
+                  <div key={idx} className="p-3 rounded-xl bg-white/5 border border-white/5 flex items-center justify-between text-xs">
+                    <div className="flex items-center gap-3">
+                      <div className={`w-2.5 h-2.5 rounded-full ${
+                        sub.status === 'Optimal' ? 'bg-emerald-400' : 'bg-amber-400 animate-pulse'
+                      }`} />
+                      <div>
+                        <span className="font-bold text-white">{sub.name}</span>
+                        <div className="text-[10px] text-gray-400">Voltage: {sub.voltage}</div>
+                      </div>
+                    </div>
+
+                    <div className="flex items-center gap-6">
+                      <div className="text-right">
+                        <div className="font-semibold text-cyan-400">{sub.loadMW} MW</div>
+                        <div className="text-[10px] text-gray-400">Utilisation: {sub.utilisationPct}%</div>
+                      </div>
+                      <span className={`px-2 py-0.5 rounded text-[10px] font-bold ${
+                        sub.status === 'Optimal' ? 'bg-emerald-950 text-emerald-300 border border-emerald-500/30' : 'bg-amber-950 text-amber-300 border border-amber-500/30'
+                      }`}>
+                        {sub.status}
+                      </span>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            {/* Right Col: Analytical Delhi Regions List */}
+            <div className="liquid-glass p-6 rounded-2xl border border-white/10 flex flex-col justify-between">
               <div>
-                <h2 className="text-xl font-bold text-white flex items-center gap-2">
-                  <MapPin className="w-5 h-5 text-cyan-400" />
-                  Delhi Regional DISCOM Spatial Layout
-                </h2>
-                <p className="text-xs text-gray-400 mt-0.5">Interactive DISCOM sub-station grid map view</p>
-              </div>
-              <span className="text-xs font-semibold px-3 py-1 rounded-full bg-cyan-500/20 text-cyan-300 border border-cyan-500/30">
-                {selectedDiscom.code} Active
-              </span>
-            </div>
-
-            {/* Delhi Graphical Zonal Map Illustration */}
-            <div className="relative w-full h-[320px] rounded-xl bg-black/60 border border-white/10 p-6 flex flex-col justify-between overflow-hidden">
-              <div className="absolute inset-0 opacity-15 bg-[radial-gradient(#38bdf8_1px,transparent_1px)] [background-size:16px_16px]"></div>
-              
-              <div className="relative z-10 flex items-center justify-between text-xs text-gray-400">
-                <span className="font-mono">NORTH DELHI (TPDDL)</span>
-                <span className="font-mono">EAST DELHI (BYPL)</span>
-              </div>
-
-              {/* Sub-station Node Layout */}
-              <div className="relative z-10 grid grid-cols-3 gap-4 my-auto">
-                <div className={`p-4 rounded-xl border text-center transition-all ${
-                  selectedDiscom.code === 'TPDDL' ? 'bg-amber-500/20 border-amber-400' : 'bg-white/5 border-white/10'
-                }`}>
-                  <div className="text-xs font-bold text-amber-300">TPDDL Zone</div>
-                  <div className="text-lg font-bold text-white mt-1">2,150 MW</div>
-                  <div className="text-[10px] text-gray-400">68 Sub-stations</div>
+                <div className="flex items-center justify-between mb-4">
+                  <h2 className="text-lg font-bold text-white">9 Analytical Regions</h2>
+                  <span className="text-[10px] text-amber-400 bg-amber-950/60 px-2 py-0.5 rounded border border-amber-500/30">
+                    Geographic Breakdown
+                  </span>
                 </div>
 
-                <div className={`p-4 rounded-xl border text-center transition-all ${
-                  selectedDiscom.code === 'BRPL' ? 'bg-cyan-500/20 border-cyan-400' : 'bg-white/5 border-white/10'
-                }`}>
-                  <div className="text-xs font-bold text-cyan-300">BRPL Zone</div>
-                  <div className="text-lg font-bold text-white mt-1">3,240 MW</div>
-                  <div className="text-[10px] text-gray-400">94 Sub-stations</div>
-                </div>
+                <p className="text-xs text-gray-400 mb-4 leading-relaxed">
+                  Delhi demand divided into 9 analytical geographic zones for regional growth & load density tracking:
+                </p>
 
-                <div className={`p-4 rounded-xl border text-center transition-all ${
-                  selectedDiscom.code === 'BYPL' ? 'bg-emerald-500/20 border-emerald-400' : 'bg-white/5 border-white/10'
-                }`}>
-                  <div className="text-xs font-bold text-emerald-300">BYPL Zone</div>
-                  <div className="text-lg font-bold text-white mt-1">1,820 MW</div>
-                  <div className="text-[10px] text-gray-400">52 Sub-stations</div>
+                <div className="space-y-2 text-xs">
+                  {analyticalRegions.map((reg, idx) => (
+                    <div key={idx} className="p-2.5 rounded-lg bg-white/5 border border-white/5 flex items-center justify-between">
+                      <div>
+                        <span className="font-semibold text-white">{reg.name}</span>
+                        <div className="text-[10px] text-gray-400">DISCOM: <strong className="text-cyan-400">{reg.discom}</strong></div>
+                      </div>
+                      <div className="text-right">
+                        <div className="font-bold text-emerald-400">{reg.load}</div>
+                        <div className="text-[10px] text-gray-400">Peak: {reg.peak}</div>
+                      </div>
+                    </div>
+                  ))}
                 </div>
               </div>
 
-              <div className="relative z-10 flex items-center justify-between text-xs text-gray-400">
-                <span className="font-mono">SOUTH & WEST DELHI (BRPL)</span>
-                <span className="font-mono text-cyan-400 flex items-center gap-1">
-                  <Activity className="w-3.5 h-3.5 animate-pulse" /> Grid Synchronized
+              <div className="mt-6 p-3 rounded-xl bg-amber-950/30 border border-amber-500/20 text-[11px] text-amber-200/90 flex items-start gap-2">
+                <AlertTriangle className="w-4 h-4 text-amber-400 shrink-0 mt-0.5" />
+                <span>
+                  <strong>Note:</strong> Regional boundaries are analytical geographical representations for grid research and do not represent internal feeder switching configurations.
                 </span>
               </div>
             </div>
+
           </div>
-
-          <div className="mt-4 pt-3 border-t border-white/10 flex items-center justify-between text-xs text-gray-400">
-            <span>Sub-station Congestion Status: <strong className="text-emerald-400">Normal</strong></span>
-            <span>Historical All-Time Peak: <strong className="text-white">8,656 MW</strong></span>
-          </div>
-        </div>
-
-        {/* Right Column: Selected DISCOM Zonal Metrics */}
-        <div className="lg:col-span-5 space-y-6">
-          <div className="liquid-glass p-6 rounded-2xl border border-white/10 space-y-5">
-            <div className="flex items-center justify-between border-b border-white/10 pb-3">
-              <h3 className="text-lg font-bold text-white">{selectedDiscom.name} Details</h3>
-              <span className="text-xs font-mono text-cyan-400">{selectedDiscom.region}</span>
-            </div>
-
-            <div className="grid grid-cols-2 gap-4">
-              <div className="bg-white/5 p-3.5 rounded-xl border border-white/5">
-                <div className="text-xs text-gray-400 flex items-center gap-1.5">
-                  <Zap className="w-3.5 h-3.5 text-cyan-400" /> Current Load
-                </div>
-                <div className="text-xl font-bold text-white mt-1">
-                  {selectedDiscom.currentLoadMW} <span className="text-xs text-gray-400">MW</span>
-                </div>
-              </div>
-
-              <div className="bg-white/5 p-3.5 rounded-xl border border-white/5">
-                <div className="text-xs text-gray-400 flex items-center gap-1.5">
-                  <Activity className="w-3.5 h-3.5 text-emerald-400" /> Peak Summer Load
-                </div>
-                <div className="text-xl font-bold text-emerald-400 mt-1">
-                  {selectedDiscom.peakLoadMW} <span className="text-xs text-gray-400">MW</span>
-                </div>
-              </div>
-
-              <div className="bg-white/5 p-3.5 rounded-xl border border-white/5">
-                <div className="text-xs text-gray-400 flex items-center gap-1.5">
-                  <Sun className="w-3.5 h-3.5 text-yellow-400" /> Rooftop Solar
-                </div>
-                <div className="text-xl font-bold text-yellow-400 mt-1">
-                  {selectedDiscom.solarMW} <span className="text-xs text-gray-400">MW</span>
-                </div>
-              </div>
-
-              <div className="bg-white/5 p-3.5 rounded-xl border border-white/5">
-                <div className="text-xs text-gray-400 flex items-center gap-1.5">
-                  <Car className="w-3.5 h-3.5 text-amber-400" /> EV Chargers
-                </div>
-                <div className="text-xl font-bold text-amber-400 mt-1">
-                  {selectedDiscom.evStations} <span className="text-xs text-gray-400">Points</span>
-                </div>
-              </div>
-            </div>
-
-            <div className="p-4 rounded-xl bg-cyan-950/30 border border-cyan-500/20 text-xs text-gray-300">
-              <span className="font-semibold text-cyan-300">Zonal Dispatch Note:</span>
-              <p className="text-[11px] text-gray-400 mt-1">
-                {selectedDiscom.code} network experiencing high air-conditioning cooling load. 
-                Sub-stations operating at {Math.round((selectedDiscom.currentLoadMW / selectedDiscom.capacityMW) * 100)}% design capacity with safe transformer thermal margins.
-              </p>
-            </div>
-          </div>
-
-          {/* Delhi Grid Totals Box */}
-          <div className="liquid-glass p-5 rounded-2xl border border-white/10 space-y-3">
-            <h4 className="text-sm font-bold text-white border-b border-white/10 pb-2">
-              Delhi SLDC Infrastructure Summary
-            </h4>
-            <div className="grid grid-cols-2 gap-2 text-xs">
-              <div className="text-gray-400">Total Installed Solar:</div>
-              <div className="text-right font-bold text-yellow-300">{totalSolar} MW</div>
-
-              <div className="text-gray-400">Public EV Chargers:</div>
-              <div className="text-right font-bold text-cyan-300">{totalEV} Stations</div>
-
-              <div className="text-gray-400">Grid Sub-stations:</div>
-              <div className="text-right font-bold text-white">214 Active Units</div>
-
-              <div className="text-gray-400">Peak Thermal Limit:</div>
-              <div className="text-right font-bold text-emerald-400">{totalCapacity} MW</div>
-            </div>
-          </div>
-        </div>
-
-      </div>
+        </>
+      )}
 
     </div>
   );

@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { NavLink, useLocation } from 'react-router-dom';
 import { getLiveDelhiGridStatus } from '../../services/api';
+import { DataModeBadge } from '../dashboard/DataModeBadge';
 import { Zap, Menu, X, Activity } from 'lucide-react';
 
 export const Navbar = () => {
@@ -8,7 +9,6 @@ export const Navbar = () => {
   const [gridStatus, setGridStatus] = useState(getLiveDelhiGridStatus());
   const location = useLocation();
 
-  // Periodically update live ticker data
   useEffect(() => {
     const interval = setInterval(() => {
       setGridStatus(getLiveDelhiGridStatus());
@@ -16,7 +16,6 @@ export const Navbar = () => {
     return () => clearInterval(interval);
   }, []);
 
-  // Close mobile drawer on route change
   useEffect(() => {
     setIsMobileOpen(false);
   }, [location]);
@@ -27,7 +26,7 @@ export const Navbar = () => {
     { label: 'Power Intelligence', path: '/power-intelligence' },
     { label: 'Solar & Grid', path: '/solar-grid' },
     { label: 'AI Simulator', path: '/simulator' },
-    { label: 'Model Intelligence', path: '/model-intelligence' },
+    { label: 'Model Intelligence', path: '/model' },
   ];
 
   return (
@@ -48,26 +47,30 @@ export const Navbar = () => {
                 ऊर्जादृष्टि
               </span>
             </div>
-            <span className="text-[10px] text-gray-400 tracking-wider">
-              AI ENERGY INTELLIGENCE FOR DELHI
+            <span className="text-[10px] text-gray-400 tracking-wider uppercase">
+              Predict. Prepare. Power Delhi.
             </span>
           </div>
         </NavLink>
 
-        {/* Live Grid Status Ticker (Desktop) */}
-        <div className="hidden xl:flex items-center gap-3 px-3.5 py-1.5 rounded-full bg-white/5 border border-white/10 text-xs">
-          <span className="relative flex h-2 w-2">
-            <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
-            <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500"></span>
-          </span>
-          <span className="text-gray-300 font-medium flex items-center gap-1.5">
-            <Activity className="w-3.5 h-3.5 text-cyan-400" />
-            Delhi Load: <strong className="text-white">{gridStatus.currentLoadMW.toLocaleString()} MW</strong>
-          </span>
-          <span className="text-gray-600">|</span>
-          <span className="text-gray-300">
-            Freq: <strong className="text-emerald-400">{gridStatus.frequencyHz} Hz</strong>
-          </span>
+        {/* Live Grid Status Ticker & Demo Mode Badge */}
+        <div className="hidden xl:flex items-center gap-3">
+          <DataModeBadge isDemoMode={true} />
+          
+          <div className="flex items-center gap-3 px-3.5 py-1 rounded-full bg-white/5 border border-white/10 text-xs">
+            <span className="relative flex h-2 w-2">
+              <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
+              <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500"></span>
+            </span>
+            <span className="text-gray-300 font-medium flex items-center gap-1.5">
+              <Activity className="w-3.5 h-3.5 text-cyan-400" />
+              Delhi Load: <strong className="text-white">{gridStatus.currentLoadMW.toLocaleString()} MW</strong>
+            </span>
+            <span className="text-gray-600">|</span>
+            <span className="text-gray-300">
+              Freq: <strong className="text-emerald-400">{gridStatus.frequencyHz} Hz</strong>
+            </span>
+          </div>
         </div>
 
         {/* Center: Desktop Navigation Links */}
@@ -77,7 +80,7 @@ export const Navbar = () => {
               key={item.path}
               to={item.path}
               className={({ isActive }: { isActive: boolean }) =>
-                `text-xs font-medium transition-all duration-200 py-1 px-2 rounded-md ${
+                `text-xs font-medium transition-all duration-200 py-1 px-2.5 rounded-md ${
                   isActive
                     ? 'text-cyan-400 bg-cyan-950/40 border border-cyan-500/30 shadow-sm shadow-cyan-500/10'
                     : 'text-gray-300 hover:text-white hover:bg-white/5'
@@ -113,6 +116,9 @@ export const Navbar = () => {
       {/* Mobile Drawer */}
       {isMobileOpen && (
         <div className="lg:hidden mt-3 liquid-glass rounded-xl p-4 border border-white/10 flex flex-col gap-2 animate-fadeIn">
+          <div className="flex justify-between items-center pb-2 border-b border-white/10 mb-1">
+            <DataModeBadge isDemoMode={true} />
+          </div>
           {navItems.map((item) => (
             <NavLink
               key={item.path}

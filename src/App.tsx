@@ -1,4 +1,4 @@
-import { BrowserRouter, Routes, Route } from 'react-router-dom';
+import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { Navbar } from './components/layout/Navbar';
 import { HomePage } from './pages/HomePage';
 import { ForecastPage } from './pages/ForecastPage';
@@ -22,7 +22,8 @@ export function App() {
             <Route path="/power-intelligence" element={<PowerIntelligencePage />} />
             <Route path="/solar-grid" element={<SolarGridPage />} />
             <Route path="/simulator" element={<SimulatorPage />} />
-            <Route path="/model-intelligence" element={<ModelIntelligencePage />} />
+            <Route path="/model" element={<ModelIntelligencePage />} />
+            <Route path="/model-intelligence" element={<Navigate to="/model" replace />} />
           </Routes>
         </main>
 
@@ -33,8 +34,8 @@ export function App() {
             <span>— AI-Powered Energy Intelligence for Delhi</span>
           </div>
           <div className="flex items-center gap-6 text-gray-400">
-            <span>Powered by OpenSTEF Engine</span>
-            <span>Delhi SLDC Integration</span>
+            <span>Tagline: "Predict. Prepare. Power Delhi."</span>
+            <span>OpenSTEF Adapter Engine</span>
             <span>© 2026 UrjaDrishti</span>
           </div>
         </footer>

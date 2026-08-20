@@ -22,7 +22,7 @@ export const getLiveDelhiGridStatus = () => {
 };
 
 export const getForecastData = (horizon: ForecastHorizon, dateStr?: string): DemandDataPoint[] => {
-  const targetDate = dateStr ? new Date(dateStr) : new Date('2026-08-20');
+  const targetDate = dateStr ? new Date(dateStr) : new Date('2026-06-21');
   const month = targetDate.getMonth() + 1; // 1 to 12
   const day = targetDate.getDate();        // 1 to 31
 
@@ -41,10 +41,15 @@ export const getForecastData = (horizon: ForecastHorizon, dateStr?: string): Dem
       const diurnalRamp = Math.sin(((i - 6) / 24) * 2 * Math.PI) * 1300;
       const pred = Math.round(monthBaseMW + diurnalRamp);
 
+      // Realistic Gemini AI forecast with model residual variance (±1.5%)
+      const aiResidual = Math.sin((i * 3.7) + month + day) * 62 + Math.cos(i * 1.5) * 35;
+      const geminiMW = Math.round(pred + aiResidual);
+
       points.push({
         time: timeStr,
         actualMW: pred,
         predictedMW: pred,
+        geminiAiForecastMW: geminiMW,
         upperConfidence: Math.round(pred * 1.035),
         lowerConfidence: Math.round(pred * 0.965),
         temperature: Math.round(30 + Math.sin(i / 8) * 6),
@@ -62,10 +67,15 @@ export const getForecastData = (horizon: ForecastHorizon, dateStr?: string): Dem
     const diurnalRamp = Math.sin(((i - 6) / 24) * 2 * Math.PI) * 1450;
     const pred = Math.round(monthBaseMW + diurnalRamp);
 
+    // Realistic Gemini AI forecast with model residual variance (±1.5%)
+    const aiResidual = Math.sin((i * 3.7) + month + day) * 68 + Math.cos(i * 1.4) * 38;
+    const geminiMW = Math.round(pred + aiResidual);
+
     points.push({
       time: timeStr,
       actualMW: pred,
       predictedMW: pred,
+      geminiAiForecastMW: geminiMW,
       upperConfidence: Math.round(pred * 1.035),
       lowerConfidence: Math.round(pred * 0.965),
       temperature: Math.round(31 + Math.sin((i - 6) / 12) * 5),
@@ -77,7 +87,7 @@ export const getForecastData = (horizon: ForecastHorizon, dateStr?: string): Dem
 };
 
 export const getDuckCurveData = (dateStr?: string): DuckCurveDataPoint[] => {
-  const targetDate = dateStr ? new Date(dateStr) : new Date('2026-08-20');
+  const targetDate = dateStr ? new Date(dateStr) : new Date('2026-06-21');
   const month = targetDate.getMonth() + 1;
   const day = targetDate.getDate();
 

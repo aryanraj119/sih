@@ -6,6 +6,7 @@ export interface DemandDataPoint {
   time_label?: string;
   actualMW?: number | null;
   predictedMW: number;
+  geminiAiForecastMW?: number;
   lowerConfidence: number;
   upperConfidence: number;
   p10MW?: number;

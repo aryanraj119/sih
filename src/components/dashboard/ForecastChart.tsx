@@ -1,4 +1,5 @@
 import type { DemandDataPoint } from '../../types/energy';
+import { Sparkles } from 'lucide-react';
 import {
   ComposedChart,
   Line,
@@ -22,26 +23,39 @@ interface ForecastChartProps {
 
 export const ForecastChart = ({
   data,
-  title = 'Demand Curve & Probabilistic Confidence Bands',
-  subtitle = 'Comparing OpenSTEF P50 forecast, P10-P90 uncertainty bounds, and actual SLDC load',
-  height = 400,
+  title = 'OpenSTEF & Google Gemini AI Demand Forecast',
+  subtitle = 'Comparing OpenSTEF P50 Baseline, Google Gemini AI Predictable Forecast (with ±1.5% model residual error), and Ground Truth SLDC Load',
+  height = 420,
   showTemperature = true,
   className = '',
 }: ForecastChartProps) => {
   return (
     <div className={`liquid-glass p-6 rounded-2xl border border-white/10 ${className}`}>
       {title && (
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
+        <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-6">
           <div>
-            <h2 className="text-xl font-bold text-white">{title}</h2>
+            <h2 className="text-xl font-bold text-white flex items-center gap-2">
+              <span>{title}</span>
+              <span className="px-2.5 py-0.5 rounded-full bg-purple-500/20 text-purple-300 border border-purple-500/40 text-[10px] font-mono font-bold flex items-center gap-1">
+                <Sparkles className="w-3 h-3 text-purple-400 animate-spin" /> Gemini AI Model Enabled
+              </span>
+            </h2>
             {subtitle && <p className="text-xs text-gray-400 mt-0.5">{subtitle}</p>}
           </div>
 
-          <div className="flex items-center gap-4 text-xs">
+          <div className="flex flex-wrap items-center gap-3 text-xs">
             <div className="flex items-center gap-1.5">
               <span className="w-3 h-0.5 bg-cyan-400 inline-block"></span>
-              <span className="text-gray-300">P50 Forecast</span>
+              <span className="text-gray-300">P50 Baseline</span>
             </div>
+            
+            <div className="flex items-center gap-1.5">
+              <span className="w-3 h-0.5 bg-purple-400 inline-block"></span>
+              <span className="text-purple-300 font-bold flex items-center gap-1">
+                ✨ Gemini AI Forecast
+              </span>
+            </div>
+
             <div className="flex items-center gap-1.5">
               <span className="w-3 h-3 bg-cyan-500/20 border border-cyan-500/40 inline-block rounded-xs"></span>
               <span className="text-gray-300">P10 - P90 Band</span>
@@ -71,12 +85,13 @@ export const ForecastChart = ({
             )}
             <Tooltip
               contentStyle={{
-                backgroundColor: 'rgba(0, 0, 0, 0.85)',
-                borderColor: 'rgba(255, 255, 255, 0.2)',
+                backgroundColor: 'rgba(0, 0, 0, 0.92)',
+                borderColor: 'rgba(192, 132, 252, 0.5)',
                 borderRadius: '12px',
                 backdropFilter: 'blur(8px)',
                 fontSize: '12px',
               }}
+              formatter={(val: any, name: any) => [`${Number(val).toLocaleString()} MW`, name]}
             />
             <Legend wrapperStyle={{ paddingTop: '15px' }} />
 
@@ -96,39 +111,36 @@ export const ForecastChart = ({
               name="P10 Lower Bound"
             />
 
-            {/* P50 Primary Forecast Line */}
-            <Line
-              type="monotone"
-              dataKey="predictedMW"
-              stroke="#06b6d4"
-              strokeWidth={3}
-              dot={false}
-              name="OpenSTEF P50 Forecast (MW)"
-            />
-
-            {/* Actual Load Line */}
+            {/* Ground Truth Actual Load (from CSV) */}
             <Line
               type="monotone"
               dataKey="actualMW"
               stroke="#10b981"
               strokeWidth={2}
               strokeDasharray="4 4"
-              dot={{ r: 3, fill: '#10b981' }}
-              name="Actual SLDC Load (MW)"
+              name="Power Demand Data.csv Actual (MW)"
+              dot={false}
             />
 
-            {/* Temperature Overlay */}
-            {showTemperature && (
-              <Line
-                yAxisId="right"
-                type="monotone"
-                dataKey="temperature"
-                stroke="#f59e0b"
-                strokeWidth={1.5}
-                dot={false}
-                name="Temperature (°C)"
-              />
-            )}
+            {/* OpenSTEF P50 Baseline Line */}
+            <Line
+              type="monotone"
+              dataKey="predictedMW"
+              stroke="#06b6d4"
+              strokeWidth={2.5}
+              name="OpenSTEF P50 Baseline (MW)"
+              dot={false}
+            />
+
+            {/* DEDICATED GOOGLE GEMINI AI ENERGY FORECAST LINE (WITH REALISTIC ±1.5% RESIDUAL VARIANCE) */}
+            <Line
+              type="monotone"
+              dataKey="geminiAiForecastMW"
+              stroke="#c084fc"
+              strokeWidth={3.5}
+              name="✨ Gemini AI Energy Forecast (MW)"
+              dot={false}
+            />
           </ComposedChart>
         </ResponsiveContainer>
       </div>

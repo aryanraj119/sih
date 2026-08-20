@@ -1,4 +1,4 @@
-from fastapi import FastAPI, Query
+from fastapi import FastAPI, Query, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 from typing import Dict, Any, List, Optional
@@ -11,11 +11,12 @@ from backend.forecasting.short_term_engine import ShortTermEngine
 from backend.forecasting.day_ahead_engine import DayAheadEngine
 from backend.forecasting.long_term_engine import LongTermGrowthEngine
 from backend.forecasting.engine import CentralForecastService
+from backend.forecasting.regional_engine import RegionalEngine
 
 app = FastAPI(
     title="URJADRISHTI API",
     description="AI-Powered Energy Intelligence for Delhi powered by OpenSTEF",
-    version="0.2.0"
+    version="0.3.0"
 )
 
 # Enable CORS for local development
@@ -41,7 +42,8 @@ forecast_service = CentralForecastService(
     long_term_engine=long_term_engine,
 )
 
-# Server-side Cache Dictionary
+regional_engine = RegionalEngine(data_generator=data_generator)
+
 FORECAST_CACHE: Dict[str, Any] = {}
 
 class ScenarioRequest(BaseModel):
@@ -56,17 +58,15 @@ def health_check():
     demo_mode = os.getenv("DEMO_MODE", "true").lower() == "true"
     return {
         "status": "ok",
-        "version": "0.2.0",
+        "version": "0.3.0",
         "data_mode": "demo" if demo_mode else "live",
         "forecasting_service_status": "ready",
-        "framework": "OpenSTEF Adapter + Macro Growth Engine",
+        "spatial_intelligence": "ready",
+        "framework": "OpenSTEF Adapter + Regional Engine",
     }
 
 @app.get("/api/model-status")
 def get_model_status():
-    """
-    Returns operational model metadata, framework version, training range, and readiness status.
-    """
     return {
         "model_name": "URJADRISHTI-OpenSTEF-Predictor",
         "version": "v2.4.0",
@@ -80,9 +80,6 @@ def get_model_status():
 
 @app.get("/api/forecast")
 def get_forecast(horizon: str = Query("day_ahead", description="Forecasting horizon: short_term | day_ahead | long_term")):
-    """
-    Returns multi-horizon demand forecast, peak load analysis, ramp rates, and uncertainty intervals.
-    """
     cache_key = f"forecast_{horizon}"
     if cache_key in FORECAST_CACHE:
         return FORECAST_CACHE[cache_key]
@@ -115,13 +112,73 @@ def get_forecast(horizon: str = Query("day_ahead", description="Forecasting hori
 def get_peak_forecast(horizon: str = Query("day_ahead")):
     return forecast_service.get_peak_forecast(horizon)
 
+# ==================== PHASE 3: REGIONAL SPATIAL APIs ====================
+
 @app.get("/api/regions")
 def get_regions():
-    regions = data_generator.generate_regional_data()
+    """
+    Returns spatial intelligence for all 9 Delhi analytical regions.
+    """
+    regions = regional_engine.get_all_regions()
     return {
         "data_mode": "DEMO_MODE",
         "total_count": len(regions),
         "regions": regions,
+    }
+
+@app.get("/api/regions/summary")
+def get_regions_summary():
+    """
+    Returns Delhi-wide regional summary metrics (total demand, peak MW, highest risk region).
+    """
+    return regional_engine.get_regional_summary()
+
+@app.get("/api/regions/risk")
+def get_regions_risk():
+    """
+    Returns regional risk score rankings and attention advisories.
+    """
+    regions = regional_engine.get_all_regions()
+    sorted_risk = sorted(regions, key=lambda x: x["risk_score"], reverse=True)
+    return {
+        "data_mode": "DEMO_MODE",
+        "highest_risk_region": sorted_risk[0]["region_name"],
+        "highest_risk_score": sorted_risk[0]["risk_score"],
+        "attention_required_count": len([r for r in sorted_risk if r["risk_score"] >= 50.0]),
+        "risk_rankings": sorted_risk,
+    }
+
+@app.get("/api/regions/{region_id}")
+def get_region_detail(region_id: str):
+    """
+    Returns detailed profile and telemetry for a specific Delhi analytical region.
+    """
+    return regional_engine.get_region_by_id(region_id)
+
+@app.get("/api/regions/{region_id}/forecast")
+def get_region_forecast(region_id: str, horizon: str = Query("day_ahead")):
+    """
+    Returns scaled time-series demand predictions for a specific Delhi analytical region.
+    """
+    points = regional_engine.get_regional_forecast(region_id, horizon=horizon)
+    return {
+        "region_id": region_id,
+        "horizon": horizon,
+        "data_mode": "DEMO_MODE",
+        "count": len(points),
+        "data": points,
+    }
+
+@app.get("/api/regions/{region_id}/growth")
+def get_region_growth(region_id: str):
+    """
+    Returns 1-5 year macro-spatial growth projections (2026-2030) for a specific Delhi region.
+    """
+    points = regional_engine.get_regional_growth(region_id)
+    return {
+        "region_id": region_id,
+        "data_mode": "DEMO_MODE",
+        "points": points,
     }
 
 @app.get("/api/model-performance")

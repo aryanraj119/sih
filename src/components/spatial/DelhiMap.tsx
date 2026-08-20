@@ -147,7 +147,7 @@ export const DelhiMap = ({
               ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
               b64Frame = canvas.toDataURL('image/jpeg', 0.75);
 
-              // Client-Side Canvas Pixel Inspector (Flame & Bright Spark Detector)
+              // Client-Side Canvas Pixel Inspector (High Precision Flame & Electrical Spark Detector)
               const imgData = ctx.getImageData(0, 0, canvas.width, canvas.height);
               const pixels = imgData.data;
               let minX = canvas.width, minY = canvas.height, maxX = 0, maxY = 0;
@@ -158,9 +158,9 @@ export const DelhiMap = ({
                 const g = pixels[i + 1];
                 const b = pixels[i + 2];
 
-                // Flame / Spark Spectral Rule: High Red/Yellow or High Luminance Core
-                const isFlameColor = (r > 160 && g > 70 && b < 140 && (r - g) > 25);
-                const isSparkCore = (r > 220 && g > 200 && b > 140);
+                // Strict Flame / Electrical Spark Spectral Rule
+                const isFlameColor = (r > 210 && g > 80 && g < 170 && b < 80 && (r - g) > 50);
+                const isSparkCore = (r > 252 && g > 245 && b > 210);
 
                 if (isFlameColor || isSparkCore) {
                   firePixelCount++;
@@ -173,7 +173,8 @@ export const DelhiMap = ({
                 }
               }
 
-              if (firePixelCount >= 25 && maxX > minX && maxY > minY) {
+              // Require at least 450 dense fire/spark pixels (approx 1.5% of canvas) to avoid false alarms
+              if (firePixelCount >= 450 && maxX > minX && maxY > minY) {
                 isClientFire = true;
                 const bw = Math.max(maxX - minX, 30);
                 const bh = Math.max(maxY - minY, 30);

@@ -6,11 +6,12 @@ import { PowerIntelligencePage } from './pages/PowerIntelligencePage';
 import { SolarGridPage } from './pages/SolarGridPage';
 import { SimulatorPage } from './pages/SimulatorPage';
 import { ModelIntelligencePage } from './pages/ModelIntelligencePage';
+import { AiChatbot } from './components/chat/AiChatbot';
 
 export function App() {
   return (
     <BrowserRouter>
-      <div className="w-full min-h-screen bg-black text-white font-sans antialiased flex flex-col justify-between selection:bg-cyan-500 selection:text-black">
+      <div className="w-full min-h-screen bg-black text-white font-sans antialiased flex flex-col justify-between selection:bg-cyan-500 selection:text-black relative">
         {/* Top Header Navbar */}
         <Navbar />
 
@@ -26,6 +27,9 @@ export function App() {
             <Route path="/model-intelligence" element={<Navigate to="/model" replace />} />
           </Routes>
         </main>
+
+        {/* Floating AI Chatbot in Bottom Right Corner */}
+        <AiChatbot />
 
         {/* Global Footer */}
         <footer className="w-full border-t border-white/10 py-6 px-6 md:px-12 text-xs text-gray-500 flex flex-col md:flex-row items-center justify-between gap-4">

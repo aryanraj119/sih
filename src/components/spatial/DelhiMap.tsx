@@ -61,60 +61,24 @@ export const DelhiMap = ({
   const videoRef = useRef<HTMLVideoElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
 
-  // Exact Substation Coordinates mapped directly onto the SLDC Delhi Power Generation & Transmission Map Image
+  // Key Major Grid Substation Nodes mapped precisely to SLDC Map aspect ratio
   const mapSubstations: ImageSubstationNode[] = [
     { id: 'mandola_400', name: 'Mandola 400kV Substation', type: 'existing_400', x: 74.0, y: 10.5, voltage: '400/220 kV', capacityMW: 2000, status: 'Optimal', discom: 'TPDDL' },
     { id: 'narela_220', name: 'Narela 220kV Substation', type: 'existing_220', x: 45.0, y: 13.0, voltage: '220 kV', capacityMW: 600, status: 'Optimal', discom: 'TPDDL' },
-    { id: 'hamidpur_400', name: 'Hamidpur 400kV Substation', type: 'proposed_400', x: 52.0, y: 19.0, voltage: '400/220 kV', capacityMW: 1500, status: 'Proposed', discom: 'TPDDL' },
-    { id: 'ccgt_bawana', name: 'Bawana CCGT Power Gen', type: 'generation', x: 30.0, y: 23.5, voltage: 'Generation', capacityMW: 1500, status: 'Optimal', discom: 'TPDDL' },
-    { id: 'bawana_400', name: 'Bawana 400kV Substation', type: 'existing_400', x: 31.0, y: 24.5, voltage: '400/220 kV', capacityMW: 1800, status: 'Optimal', discom: 'TPDDL' },
-    { id: 'kanjhawala_220', name: 'Kanjhawala 220kV Substation', type: 'existing_220', x: 27.0, y: 32.0, voltage: '220 kV', capacityMW: 450, status: 'Optimal', discom: 'TPDDL' },
-    { id: 'rohini_2', name: 'Rohini-2 220kV Substation', type: 'existing_220', x: 35.0, y: 30.5, voltage: '220 kV', capacityMW: 500, status: 'Optimal', discom: 'TPDDL' },
-    { id: 'rohini_1', name: 'Rohini-1 220kV Substation', type: 'existing_220', x: 34.5, y: 38.0, voltage: '220 kV', capacityMW: 480, status: 'Optimal', discom: 'TPDDL' },
-    { id: 'rohini_34', name: 'Rohini-34 220kV Substation', type: 'proposed_220', x: 31.5, y: 40.5, voltage: '220 kV', capacityMW: 400, status: 'Proposed', discom: 'TPDDL' },
+    { id: 'bawana_400', name: 'Bawana 400kV & CCGT Gen', type: 'existing_400', x: 31.0, y: 24.5, voltage: '400/220 kV', capacityMW: 1800, status: 'Optimal', discom: 'TPDDL' },
     { id: 'shalimar_bagh_400', name: 'Shalimar Bagh 400kV Substation', type: 'proposed_400', x: 47.0, y: 31.5, voltage: '400/220 kV', capacityMW: 1500, status: 'Proposed', discom: 'TPDDL' },
-    { id: 'sgtn_220', name: 'SGTN 220kV Substation', type: 'proposed_220', x: 51.0, y: 26.0, voltage: '220 kV', capacityMW: 400, status: 'Proposed', discom: 'TPDDL' },
-    { id: 'gopalpur_220', name: 'Gopalpur 220kV Substation', type: 'existing_220', x: 60.0, y: 31.0, voltage: '220 kV', capacityMW: 500, status: 'Optimal', discom: 'TPDDL' },
-    { id: 'wazirabad_220', name: 'Wazirabad 220kV Substation', type: 'existing_220', x: 68.5, y: 33.0, voltage: '220 kV', capacityMW: 700, status: 'Optimal', discom: 'BYPL' },
+    { id: 'wazirabad_220', name: 'Gopalpur / Wazirabad 220kV', type: 'existing_220', x: 64.0, y: 32.0, voltage: '220 kV', capacityMW: 700, status: 'Optimal', discom: 'BYPL' },
     { id: 'harsh_vihar_400', name: 'Harsh Vihar 400kV Substation', type: 'existing_400', x: 76.0, y: 38.0, voltage: '400/220 kV', capacityMW: 1200, status: 'Optimal', discom: 'BYPL' },
     { id: 'mundka_400', name: 'Mundka 400kV Substation', type: 'existing_400', x: 26.5, y: 50.5, voltage: '400/220 kV', capacityMW: 1500, status: 'Optimal', discom: 'BRPL' },
-    { id: 'jhajjar_gen', name: 'Jhajjar Power Gen', type: 'generation', x: 7.0, y: 46.0, voltage: 'Generation', capacityMW: 1320, status: 'Optimal', discom: 'BRPL' },
-    { id: 'peeragarhi_220', name: 'Peeragarhi 220kV Substation', type: 'existing_220', x: 37.5, y: 52.5, voltage: '220 kV', capacityMW: 520, status: 'Optimal', discom: 'BRPL' },
     { id: 'karmapura_400', name: 'Karmapura 400kV Substation', type: 'proposed_400', x: 52.5, y: 46.5, voltage: '400/220 kV', capacityMW: 1200, status: 'Proposed', discom: 'BYPL' },
-    { id: 'seelampur_220', name: 'Seelampur 220kV Substation', type: 'existing_220', x: 74.0, y: 44.0, voltage: '220 kV', capacityMW: 450, status: 'Optimal', discom: 'BYPL' },
-    { id: 'geeta_colony_220', name: 'Geeta Colony 220kV Substation', type: 'existing_220', x: 76.0, y: 48.0, voltage: '220 kV', capacityMW: 500, status: 'Optimal', discom: 'BYPL' },
-    { id: 'preet_vihar_220', name: 'Preet Vihar 220kV Substation', type: 'existing_220', x: 84.0, y: 45.0, voltage: '220 kV', capacityMW: 550, status: 'Optimal', discom: 'BYPL' },
-    { id: 'patparganj_220', name: 'Patparganj 220kV Substation', type: 'existing_220', x: 80.5, y: 52.0, voltage: '220 kV', capacityMW: 650, status: 'Optimal', discom: 'BYPL' },
-    { id: 'gazipur_220', name: 'Gazipur 220kV Substation', type: 'existing_220', x: 87.5, y: 57.5, voltage: '220 kV', capacityMW: 600, status: 'Optimal', discom: 'BYPL' },
-    { id: 'najafgarh_220', name: 'Najafgarh 220kV Substation', type: 'existing_220', x: 24.5, y: 61.5, voltage: '220 kV', capacityMW: 480, status: 'Optimal', discom: 'BRPL' },
-    { id: 'budeila_220', name: 'Budeila 220kV Substation', type: 'proposed_220', x: 38.5, y: 57.0, voltage: '220 kV', capacityMW: 400, status: 'Proposed', discom: 'BRPL' },
-    { id: 'pusa_220', name: 'Pusa 220kV Substation', type: 'proposed_220', x: 46.5, y: 56.5, voltage: '220 kV', capacityMW: 450, status: 'Proposed', discom: 'BYPL' },
-    { id: 'park_st_220', name: 'Park St 220kV Substation', type: 'existing_220', x: 58.5, y: 54.5, voltage: '220 kV', capacityMW: 500, status: 'Optimal', discom: 'BYPL' },
-    { id: 'electric_lane_220', name: 'Electric Lane 220kV Substation', type: 'existing_220', x: 64.5, y: 60.5, voltage: '220 kV', capacityMW: 420, status: 'Optimal', discom: 'BYPL' },
-    { id: 'pragati_gt', name: 'Pragati GT Power Gen', type: 'generation', x: 79.0, y: 64.5, voltage: 'Generation', capacityMW: 330, status: 'Optimal', discom: 'BRPL' },
+    { id: 'patparganj_220', name: 'Patparganj & Preet Vihar 220kV', type: 'existing_220', x: 80.5, y: 52.0, voltage: '220 kV', capacityMW: 650, status: 'Optimal', discom: 'BYPL' },
+    { id: 'peeragarhi_220', name: 'Najafgarh / Peeragarhi 220kV', type: 'existing_220', x: 30.0, y: 58.0, voltage: '220 kV', capacityMW: 520, status: 'Optimal', discom: 'BRPL' },
     { id: 'maharani_bagh_400', name: 'Maharani Bagh 400kV Substation', type: 'existing_400', x: 74.5, y: 69.5, voltage: '400/220 kV', capacityMW: 2100, status: 'Alert', discom: 'BRPL' },
-    { id: 'jhatikalan_400', name: 'Jhatikalan 400kV Substation', type: 'existing_400', x: 8.0, y: 71.5, voltage: '400/220 kV', capacityMW: 1000, status: 'Optimal', discom: 'BRPL' },
-    { id: 'bamnaul_400', name: 'Bamnaul 400kV Substation', type: 'existing_400', x: 18.5, y: 78.0, voltage: '400/220 kV', capacityMW: 1200, status: 'Optimal', discom: 'BRPL' },
-    { id: 'papan_kalan_220', name: 'Papan Kalan 220kV Substation', type: 'existing_220', x: 24.0, y: 69.5, voltage: '220 kV', capacityMW: 550, status: 'Optimal', discom: 'BRPL' },
-    { id: 'janakpuri_220', name: 'Janakpuri 220kV Substation', type: 'existing_220', x: 32.5, y: 66.5, voltage: '220 kV', capacityMW: 600, status: 'Optimal', discom: 'BRPL' },
-    { id: 'naraina_220', name: 'Naraina 220kV Substation', type: 'existing_220', x: 39.5, y: 63.5, voltage: '220 kV', capacityMW: 480, status: 'Optimal', discom: 'BRPL' },
-    { id: 'dial_220', name: 'DIAL 220kV Substation', type: 'existing_220', x: 38.0, y: 71.5, voltage: '220 kV', capacityMW: 750, status: 'Optimal', discom: 'BRPL' },
-    { id: 'ridge_valley_220', name: 'Ridge Valley 220kV Substation', type: 'existing_220', x: 50.5, y: 63.0, voltage: '220 kV', capacityMW: 420, status: 'Optimal', discom: 'BRPL' },
-    { id: 'vasant_kunj_220', name: 'Vasant Kunj 220kV Substation', type: 'existing_220', x: 47.5, y: 69.5, voltage: '220 kV', capacityMW: 550, status: 'Alert', discom: 'BRPL' },
-    { id: 'mehrauli_220', name: 'Mehrauli 220kV Substation', type: 'existing_220', x: 45.0, y: 74.5, voltage: '220 kV', capacityMW: 500, status: 'Optimal', discom: 'BRPL' },
-    { id: 'rangpuri_400', name: 'Rangpuri 400kV Substation', type: 'proposed_400', x: 39.0, y: 78.5, voltage: '400/220 kV', capacityMW: 1000, status: 'Proposed', discom: 'BRPL' },
-    { id: 'lodhi_rd_220', name: 'Lodhi Rd 220kV Substation', type: 'existing_220', x: 59.5, y: 66.5, voltage: '220 kV', capacityMW: 480, status: 'Optimal', discom: 'BRPL' },
-    { id: 'rk_puram_220', name: 'RK Puram 220kV Substation', type: 'proposed_220', x: 55.0, y: 71.5, voltage: '220 kV', capacityMW: 400, status: 'Proposed', discom: 'BRPL' },
-    { id: 'maidan_garhi_220', name: 'Maidan Garhi 220kV Substation', type: 'proposed_220', x: 53.5, y: 76.5, voltage: '220 kV', capacityMW: 380, status: 'Proposed', discom: 'BRPL' },
-    { id: 'aiims_220', name: 'AIIMS 220kV Substation', type: 'existing_220', x: 59.0, y: 71.5, voltage: '220 kV', capacityMW: 600, status: 'Optimal', discom: 'BRPL' },
-    { id: 'masjid_moth_220', name: 'Masjid Moth 220kV Substation', type: 'proposed_220', x: 58.5, y: 79.5, voltage: '220 kV', capacityMW: 400, status: 'Proposed', discom: 'BRPL' },
-    { id: 'okhla_220', name: 'Okhla 220kV Substation', type: 'existing_220', x: 67.0, y: 81.5, voltage: '220 kV', capacityMW: 800, status: 'Alert', discom: 'BRPL' },
-    { id: 'nehru_place_220', name: 'Nehru Place 220kV Substation', type: 'proposed_220', x: 66.0, y: 75.5, voltage: '220 kV', capacityMW: 450, status: 'Proposed', discom: 'BRPL' },
-    { id: 'jasola_220', name: 'Jasola 220kV Substation', type: 'proposed_220', x: 75.5, y: 76.0, voltage: '220 kV', capacityMW: 420, status: 'Proposed', discom: 'BRPL' },
-    { id: 'sarita_vihar_220', name: 'Sarita Vihar 220kV Substation', type: 'existing_220', x: 74.0, y: 82.0, voltage: '220 kV', capacityMW: 580, status: 'Optimal', discom: 'BRPL' },
-    { id: 'btps_gen', name: 'BTPS Power Gen', type: 'generation', x: 71.5, y: 91.5, voltage: 'Generation', capacityMW: 705, status: 'Optimal', discom: 'BRPL' },
-    { id: 'tughlakabad_400', name: 'Tughlakabad 400kV Substation', type: 'proposed_400', x: 60.0, y: 89.0, voltage: '400/220 kV', capacityMW: 1400, status: 'Proposed', discom: 'BRPL' },
-    { id: 'samaypur_400', name: 'Samaypur 400kV Substation', type: 'existing_400', x: 75.5, y: 98.0, voltage: '400/220 kV', capacityMW: 1800, status: 'Optimal', discom: 'BRPL' },
+    { id: 'dial_220', name: 'DIAL & Janakpuri 220kV', type: 'existing_220', x: 35.0, y: 69.0, voltage: '220 kV', capacityMW: 750, status: 'Optimal', discom: 'BRPL' },
+    { id: 'bamnaul_400', name: 'Bamnaul & Jhatikalan 400kV', type: 'existing_400', x: 18.5, y: 78.0, voltage: '400/220 kV', capacityMW: 1200, status: 'Optimal', discom: 'BRPL' },
+    { id: 'vasant_kunj_220', name: 'Vasant Kunj & AIIMS 220kV', type: 'existing_220', x: 52.0, y: 70.0, voltage: '220 kV', capacityMW: 550, status: 'Alert', discom: 'BRPL' },
+    { id: 'okhla_220', name: 'Okhla & Sarita Vihar 220kV', type: 'existing_220', x: 70.0, y: 81.5, voltage: '220 kV', capacityMW: 800, status: 'Alert', discom: 'BRPL' },
+    { id: 'tughlakabad_400', name: 'Tughlakabad 400kV & BTPS', type: 'proposed_400', x: 66.0, y: 90.0, voltage: '400/220 kV', capacityMW: 1400, status: 'Proposed', discom: 'BRPL' },
   ];
 
   const selectedRegion = regions.find((r) => r.region_id === selectedRegionId);
@@ -154,7 +118,6 @@ export const DelhiMap = ({
         try {
           let b64Frame = '';
 
-          // Capture video frame from canvas
           if (videoRef.current && canvasRef.current && isCameraActive) {
             const video = videoRef.current;
             const canvas = canvasRef.current;
@@ -217,7 +180,7 @@ export const DelhiMap = ({
             Delhi Power Generation & Transmission Network Map
           </h2>
           <p className="text-xs text-gray-400 mt-0.5">
-            Click any <span className="text-cyan-300 font-bold">📹 Glowing Substation Node</span> directly on the SLDC Map image to open your laptop camera feed & PyTorch Fire Vision AI
+            Click any <span className="text-cyan-300 font-bold">📹 Substation Camera Point</span> directly on the SLDC Map image to open your laptop camera feed & PyTorch Fire Vision AI
           </p>
         </div>
 
@@ -242,59 +205,64 @@ export const DelhiMap = ({
         </div>
       </div>
 
-      {/* Primary Container: Exact SLDC Map Image with SVG Clickable Camera Circles Overlay */}
+      {/* Primary Container: Exact SLDC Map Image bounded container */}
       <div className="relative w-full h-[540px] bg-black/60 rounded-2xl border border-white/10 overflow-hidden shadow-2xl flex items-center justify-center p-2">
         
-        {/* Exact User-Uploaded SLDC Delhi Transmission Map Image */}
-        <img
-          src="/delhi_grid_map.jpg"
-          alt="Delhi Power Generation & Transmission Network Map"
-          className="w-full h-full object-contain select-none"
-        />
+        {/* Precise Aspect Ratio Wrapper around image and camera points */}
+        <div className="relative max-w-full max-h-full aspect-[1000/880] h-full flex items-center justify-center">
+          
+          {/* SLDC Delhi Transmission Map Image */}
+          <img
+            src="/delhi_grid_map.jpg"
+            alt="Delhi Power Generation & Transmission Network Map"
+            className="w-full h-full object-contain select-none"
+          />
 
-        {/* Analytical Heatmap Overlay option */}
-        {showAnalyticalHeatmap && (
-          <div className="absolute inset-0 bg-black/40 backdrop-blur-xs flex items-center justify-center pointer-events-none z-10">
-            <div className="p-4 rounded-xl bg-black/80 border border-cyan-500/30 text-cyan-300 text-xs font-mono">
-              Analytical Heatmap Overlay Active • Selected Metric: {selectedMetric}
-            </div>
-          </div>
-        )}
-
-        {/* OVERLAY: Clickable Camera Trigger Circles directly over map image substations */}
-        <div className="absolute inset-0 w-full h-full pointer-events-none">
-          {mapSubstations.map((sub) => (
-            <div
-              key={sub.id}
-              style={{ left: `${sub.x}%`, top: `${sub.y}%` }}
-              onClick={(e) => {
-                e.stopPropagation();
-                setActiveCameraSubstation(sub);
-                const matchedReg = regions.find((r) => r.region_name.toLowerCase().includes(sub.discom.toLowerCase()));
-                if (matchedReg) onSelectRegion(matchedReg.region_id);
-              }}
-              onMouseEnter={() => setHoveredSubstation(sub)}
-              onMouseLeave={() => setHoveredSubstation(null)}
-              className="absolute -translate-x-1/2 -translate-y-1/2 cursor-pointer pointer-events-auto group z-20"
-            >
-              {/* Pulsing Outer Camera Ring */}
-              <span className="absolute -inset-2.5 rounded-full bg-cyan-400/40 animate-ping group-hover:bg-amber-400/60" />
-
-              {/* Clickable Circle Trigger */}
-              <div className="relative w-6 h-6 rounded-full bg-black/80 border-2 border-cyan-400 group-hover:border-amber-300 shadow-lg flex items-center justify-center transition-all group-hover:scale-125">
-                <Camera className="w-3.5 h-3.5 text-cyan-300 group-hover:text-amber-200" />
+          {/* Analytical Heatmap Overlay option */}
+          {showAnalyticalHeatmap && (
+            <div className="absolute inset-0 bg-black/40 backdrop-blur-xs flex items-center justify-center pointer-events-none z-10">
+              <div className="p-4 rounded-xl bg-black/80 border border-cyan-500/30 text-cyan-300 text-xs font-mono">
+                Analytical Heatmap Overlay Active • Selected Metric: {selectedMetric}
               </div>
+            </div>
+          )}
 
-              {/* Tooltip Label on Hover */}
-              <div className="absolute left-1/2 -translate-x-1/2 bottom-7 hidden group-hover:flex flex-col items-center z-30 pointer-events-none whitespace-nowrap">
-                <div className="bg-black/95 text-white text-[11px] font-bold px-2.5 py-1 rounded-lg border border-cyan-500/50 shadow-xl flex items-center gap-1.5">
-                  <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
-                  <span>{sub.name}</span>
+          {/* OVERLAY: Clickable Camera Trigger Circles locked to image map bounds */}
+          <div className="absolute inset-0 w-full h-full pointer-events-none">
+            {mapSubstations.map((sub) => (
+              <div
+                key={sub.id}
+                style={{ left: `${sub.x}%`, top: `${sub.y}%` }}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  setActiveCameraSubstation(sub);
+                  const matchedReg = regions.find((r) => r.region_name.toLowerCase().includes(sub.discom.toLowerCase()));
+                  if (matchedReg) onSelectRegion(matchedReg.region_id);
+                }}
+                onMouseEnter={() => setHoveredSubstation(sub)}
+                onMouseLeave={() => setHoveredSubstation(null)}
+                className="absolute -translate-x-1/2 -translate-y-1/2 cursor-pointer pointer-events-auto group z-20"
+              >
+                {/* Pulsing Outer Camera Ring */}
+                <span className="absolute -inset-2 rounded-full bg-cyan-400/40 animate-ping group-hover:bg-amber-400/60" />
+
+                {/* Clickable Circle Trigger */}
+                <div className="relative w-5 h-5 rounded-full bg-black/80 border-2 border-cyan-400 group-hover:border-amber-300 shadow-lg flex items-center justify-center transition-all group-hover:scale-125">
+                  <Camera className="w-3 h-3 text-cyan-300 group-hover:text-amber-200" />
                 </div>
-                <div className="w-2 h-2 bg-black/95 rotate-45 border-r border-b border-cyan-500/50 -mt-1"></div>
+
+                {/* Tooltip Label on Hover */}
+                <div className="absolute left-1/2 -translate-x-1/2 bottom-6 hidden group-hover:flex flex-col items-center z-30 pointer-events-none whitespace-nowrap">
+                  <div className="bg-black/95 text-white text-[10px] font-bold px-2.5 py-1 rounded-lg border border-cyan-500/50 shadow-xl flex items-center gap-1.5">
+                    <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
+                    <span>{sub.name}</span>
+                  </div>
+                  <div className="w-2 h-2 bg-black/95 rotate-45 border-r border-b border-cyan-500/50 -mt-1"></div>
+                </div>
               </div>
-            </div>
-          ))}
+            ))}
+          </div>
+
         </div>
 
         {/* Hover Information Card */}
@@ -315,7 +283,7 @@ export const DelhiMap = ({
               <div className="flex justify-between gap-4 border-t border-white/10 pt-1">
                 <span>Optical Inspection:</span>
                 <strong className="text-amber-300 flex items-center gap-1">
-                  <Camera className="w-3 h-3 text-cyan-400" /> Tap Circle to Open Laptop Camera
+                  <Camera className="w-3 h-3 text-cyan-400" /> Tap Point to Open Laptop Camera
                 </strong>
               </div>
             </div>
@@ -325,7 +293,7 @@ export const DelhiMap = ({
         {/* Legend Notification Badge */}
         <div className="absolute bottom-3 right-3 liquid-glass px-3.5 py-2 rounded-xl border border-white/10 text-[11px] text-gray-300 bg-black/80 backdrop-blur-md flex items-center gap-2 shadow-xl">
           <Camera className="w-4 h-4 text-cyan-400 animate-pulse" />
-          <span>Tap any <strong className="text-cyan-300">Camera Circle</strong> on the map to trigger live laptop video inspection</span>
+          <span>Tap any <strong className="text-cyan-300">Substation Camera Point</strong> on the map to trigger live laptop video inspection</span>
         </div>
 
       </div>

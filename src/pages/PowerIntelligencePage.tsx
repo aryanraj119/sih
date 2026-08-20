@@ -8,6 +8,7 @@ import { MapMetricSelector } from '../components/spatial/MapMetricSelector';
 import { RegionalIntelligencePanel } from '../components/spatial/RegionalIntelligencePanel';
 import { RegionalRankingTable } from '../components/spatial/RegionalRankingTable';
 import { GridAttentionCard } from '../components/spatial/GridAttentionCard';
+import { FireModelTrainingChart } from '../components/spatial/FireModelTrainingChart';
 import { DataModeBadge } from '../components/dashboard/DataModeBadge';
 import { LoadingState } from '../components/dashboard/LoadingState';
 import { ErrorState } from '../components/dashboard/ErrorState';
@@ -113,6 +114,9 @@ export const PowerIntelligencePage = () => {
               onSelectRegion={setSelectedRegionId}
             />
           </div>
+
+          {/* Substation Fire AI Model Training & Performance Statistical Chart */}
+          <FireModelTrainingChart />
         </>
       )}
 

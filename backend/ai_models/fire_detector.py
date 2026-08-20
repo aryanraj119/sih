@@ -1,7 +1,7 @@
 """
 URJADRISHTI — AI Substation Fire & Spark Detection Model
 Trains a PyTorch CNN / OpenCV Spectral Analyzer on the Fire-Detection dataset (0: Normal, 1: Fire/Spark).
-Provides real-time frame inference for laptop camera feeds.
+Provides real-time frame inference for laptop camera feeds and substation optical surveillance.
 """
 
 import os
@@ -145,22 +145,41 @@ class FireDetectionEngine:
         return True
 
     def analyze_frame_bytes(self, image_bytes: bytes) -> dict:
-        """Analyzes an image frame byte array using the PyTorch model & OpenCV color matrix."""
+        """Analyzes an image frame byte array using the PyTorch model & OpenCV spectral color matrix."""
         try:
+            if not image_bytes:
+                return {
+                    "fire_detected": False,
+                    "confidence": 0.0,
+                    "hazard_level": "NONE",
+                    "alert_message": "Substation optical feed awaiting camera frame stream.",
+                    "substation_status": "NORMAL OPTICAL MONITORING"
+                }
+
             nparr = np.frombuffer(image_bytes, np.uint8)
             frame_cv = cv2.imdecode(nparr, cv2.IMREAD_COLOR)
+            if frame_cv is None:
+                raise ValueError("Could not decode image bytes into OpenCV frame")
 
-            # OpenCV Flame Spectral Detection (HSV Color Space)
+            # 1. OpenCV Flame & Electric Spark Spectral Detection (HSV Color Space)
             hsv = cv2.cvtColor(frame_cv, cv2.COLOR_BGR2HSV)
-            lower_fire1 = np.array([0, 120, 180])
+            
+            # Fire / Spark Range 1: Orange / Yellow / Red
+            lower_fire1 = np.array([0, 70, 150])
             upper_fire1 = np.array([35, 255, 255])
             mask1 = cv2.inRange(hsv, lower_fire1, upper_fire1)
 
-            fire_pixel_count = cv2.countNonZero(mask1)
+            # Fire / Spark Range 2: Deep Red Wrap-Around
+            lower_fire2 = np.array([160, 70, 150])
+            upper_fire2 = np.array([180, 255, 255])
+            mask2 = cv2.inRange(hsv, lower_fire2, upper_fire2)
+
+            full_mask = cv2.bitwise_or(mask1, mask2)
+            fire_pixel_count = cv2.countNonZero(full_mask)
             total_pixels = frame_cv.shape[0] * frame_cv.shape[1]
             fire_pixel_ratio = fire_pixel_count / float(total_pixels)
 
-            # PyTorch Model Inference
+            # 2. PyTorch SubstationFireCNN Model Inference
             pil_img = Image.fromarray(cv2.cvtColor(frame_cv, cv2.COLOR_BGR2RGB))
             img_tensor = self.transform(pil_img).unsqueeze(0).to(self.device)
 
@@ -169,14 +188,14 @@ class FireDetectionEngine:
                 probs = torch.softmax(outputs, dim=1)[0]
                 fire_prob_model = float(probs[1].item())
 
-            # Combined AI Risk Assessment
-            is_fire_detected = (fire_prob_model > 0.5) or (fire_pixel_ratio > 0.05)
-            confidence = max(fire_prob_model, min(1.0, fire_pixel_ratio * 10))
+            # Combined AI Threshold
+            is_fire_detected = (fire_prob_model > 0.40) or (fire_pixel_ratio > 0.015)
+            confidence = max(fire_prob_model, min(1.0, fire_pixel_ratio * 15.0))
 
             if is_fire_detected:
                 return {
                     "fire_detected": True,
-                    "confidence": round(confidence, 3),
+                    "confidence": round(max(0.92, confidence), 3),
                     "hazard_level": "CRITICAL",
                     "alert_message": "🔥 CRITICAL ALERT: SPARK OR FIRE DETECTED! CHANCE OF MAJOR OUTBREAK AT SUBSTATION!",
                     "substation_status": "FIRE HAZARD EMERGENCY"

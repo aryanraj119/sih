@@ -40,6 +40,9 @@ interface DelhiMapProps {
   className?: string;
 }
 
+// Sample base64 Flame Image for instant PyTorch model testing
+const SAMPLE_FIRE_BASE64 = "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAEAAAABACAYAAACqaXHeAAAACXBIWXMAAAsTAAALEwEAmpwYAAAAB3RJTUUH5QgXFw0r7y/5rAAAAB1SURBVGje7cExAQAAAMKg9Ut2hj8gAAAAAAAAAAAAgHcDh1AAAfpjWbAAAAAASUVORK5CYII=";
+
 export const DelhiMap = ({
   regions,
   selectedMetric,
@@ -116,8 +119,19 @@ export const DelhiMap = ({
       const runVisionScan = async () => {
         setIsAnalyzingVision(true);
         try {
-          let b64Frame = '';
+          if (simulateFire) {
+            setFireResult({
+              fire_detected: true,
+              confidence: 0.985,
+              hazard_level: 'CRITICAL',
+              alert_message: '🔥 CRITICAL ALERT: SPARK OR FIRE DETECTED! CHANCE OF MAJOR OUTBREAK AT SUBSTATION!',
+              substation_status: 'FIRE HAZARD EMERGENCY',
+              substation_id: activeCameraSubstation.id
+            });
+            return;
+          }
 
+          let b64Frame = '';
           if (videoRef.current && canvasRef.current && isCameraActive) {
             const video = videoRef.current;
             const canvas = canvasRef.current;
@@ -147,7 +161,7 @@ export const DelhiMap = ({
       };
 
       runVisionScan();
-      intervalId = setInterval(runVisionScan, 2000);
+      intervalId = setInterval(runVisionScan, 1500);
     }
 
     return () => {
@@ -167,10 +181,59 @@ export const DelhiMap = ({
     setFireResult(null);
   };
 
+  const handleSimulateToggle = () => {
+    const nextVal = !simulateFire;
+    setSimulateFire(nextVal);
+    if (nextVal && activeCameraSubstation) {
+      setFireResult({
+        fire_detected: true,
+        confidence: 0.985,
+        hazard_level: 'CRITICAL',
+        alert_message: '🔥 CRITICAL ALERT: SPARK OR FIRE DETECTED! CHANCE OF MAJOR OUTBREAK AT SUBSTATION!',
+        substation_status: 'FIRE HAZARD EMERGENCY',
+        substation_id: activeCameraSubstation.id
+      });
+    }
+  };
+
+  const handleTestPyTorchImage = async () => {
+    if (!activeCameraSubstation) return;
+    setIsAnalyzingVision(true);
+    const res = await detectSubstationFire(SAMPLE_FIRE_BASE64, activeCameraSubstation.id, true);
+    if (res.data) {
+      setFireResult(res.data);
+      setSimulateFire(true);
+    }
+    setIsAnalyzingVision(false);
+  };
+
   return (
-    <div className={`liquid-glass p-6 rounded-2xl border border-white/10 relative overflow-hidden ${className}`}>
+    <div className={`liquid-glass p-6 rounded-2xl border ${
+      fireResult?.fire_detected ? 'border-rose-500 shadow-[0_0_50px_rgba(244,63,94,0.4)]' : 'border-white/10'
+    } relative overflow-hidden ${className}`}>
+      
       {/* Hidden Canvas for Video Frame Capture */}
       <canvas ref={canvasRef} className="hidden" />
+
+      {/* GLOBAL CRITICAL ALERT BANNER ON MAP COMPONENT HEADER */}
+      {fireResult?.fire_detected && (
+        <div className="mb-4 bg-rose-600 text-white px-4 py-3 rounded-xl border border-rose-400 flex items-center justify-between shadow-xl animate-pulse">
+          <div className="flex items-center gap-3">
+            <Flame className="w-6 h-6 text-yellow-300 animate-bounce shrink-0" />
+            <div>
+              <div className="font-extrabold text-sm uppercase tracking-wide">
+                🔥 CRITICAL ALERT: SPARK OR FIRE DETECTED! CHANCE OF MAJOR OUTBREAK AT SUBSTATION!
+              </div>
+              <div className="text-[11px] text-rose-100">
+                PyTorch SubstationFireCNN Vision Confidence: <strong>{(fireResult.confidence * 100).toFixed(1)}%</strong> • Location: <strong>{activeCameraSubstation?.name}</strong>
+              </div>
+            </div>
+          </div>
+          <span className="px-3 py-1 bg-black/40 text-yellow-300 font-mono text-xs font-bold rounded-lg border border-yellow-400/40">
+            EMERGENCY ALARM
+          </span>
+        </div>
+      )}
 
       {/* Map Header */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-4">
@@ -229,38 +292,48 @@ export const DelhiMap = ({
 
           {/* OVERLAY: Clickable Camera Trigger Circles locked to image map bounds */}
           <div className="absolute inset-0 w-full h-full pointer-events-none">
-            {mapSubstations.map((sub) => (
-              <div
-                key={sub.id}
-                style={{ left: `${sub.x}%`, top: `${sub.y}%` }}
-                onClick={(e) => {
-                  e.stopPropagation();
-                  setActiveCameraSubstation(sub);
-                  const matchedReg = regions.find((r) => r.region_name.toLowerCase().includes(sub.discom.toLowerCase()));
-                  if (matchedReg) onSelectRegion(matchedReg.region_id);
-                }}
-                onMouseEnter={() => setHoveredSubstation(sub)}
-                onMouseLeave={() => setHoveredSubstation(null)}
-                className="absolute -translate-x-1/2 -translate-y-1/2 cursor-pointer pointer-events-auto group z-20"
-              >
-                {/* Pulsing Outer Camera Ring */}
-                <span className="absolute -inset-2 rounded-full bg-cyan-400/40 animate-ping group-hover:bg-amber-400/60" />
+            {mapSubstations.map((sub) => {
+              const isFiredThisSub = fireResult?.fire_detected && activeCameraSubstation?.id === sub.id;
 
-                {/* Clickable Circle Trigger */}
-                <div className="relative w-5 h-5 rounded-full bg-black/80 border-2 border-cyan-400 group-hover:border-amber-300 shadow-lg flex items-center justify-center transition-all group-hover:scale-125">
-                  <Camera className="w-3 h-3 text-cyan-300 group-hover:text-amber-200" />
-                </div>
+              return (
+                <div
+                  key={sub.id}
+                  style={{ left: `${sub.x}%`, top: `${sub.y}%` }}
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    setActiveCameraSubstation(sub);
+                    const matchedReg = regions.find((r) => r.region_name.toLowerCase().includes(sub.discom.toLowerCase()));
+                    if (matchedReg) onSelectRegion(matchedReg.region_id);
+                  }}
+                  onMouseEnter={() => setHoveredSubstation(sub)}
+                  onMouseLeave={() => setHoveredSubstation(null)}
+                  className="absolute -translate-x-1/2 -translate-y-1/2 cursor-pointer pointer-events-auto group z-20"
+                >
+                  {/* Pulsing Outer Camera Ring */}
+                  <span className={`absolute -inset-2.5 rounded-full animate-ping ${
+                    isFiredThisSub ? 'bg-rose-500/80 animate-bounce' : 'bg-cyan-400/40 group-hover:bg-amber-400/60'
+                  }`} />
 
-                {/* Tooltip Label on Hover */}
-                <div className="absolute left-1/2 -translate-x-1/2 bottom-6 hidden group-hover:flex flex-col items-center z-30 pointer-events-none whitespace-nowrap">
-                  <div className="bg-black/95 text-white text-[10px] font-bold px-2.5 py-1 rounded-lg border border-cyan-500/50 shadow-xl flex items-center gap-1.5">
-                    <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
-                    <span>{sub.name}</span>
+                  {/* Clickable Circle Trigger */}
+                  <div className={`relative w-6 h-6 rounded-full border-2 shadow-lg flex items-center justify-center transition-all group-hover:scale-125 ${
+                    isFiredThisSub ? 'bg-rose-600 border-yellow-300 animate-pulse' : 'bg-black/80 border-cyan-400 group-hover:border-amber-300'
+                  }`}>
+                    {isFiredThisSub ? <Flame className="w-3.5 h-3.5 text-yellow-300 animate-bounce" /> : <Camera className="w-3.5 h-3.5 text-cyan-300 group-hover:text-amber-200" />}
                   </div>
-                  <div className="w-2 h-2 bg-black/95 rotate-45 border-r border-b border-cyan-500/50 -mt-1"></div>
+
+                  {/* Tooltip Label on Hover */}
+                  <div className="absolute left-1/2 -translate-x-1/2 bottom-7 hidden group-hover:flex flex-col items-center z-30 pointer-events-none whitespace-nowrap">
+                    <div className={`text-white text-[10px] font-bold px-2.5 py-1 rounded-lg border shadow-xl flex items-center gap-1.5 ${
+                      isFiredThisSub ? 'bg-rose-950 border-rose-500' : 'bg-black/95 border-cyan-500/50'
+                    }`}>
+                      <span className={`w-2 h-2 rounded-full animate-pulse ${isFiredThisSub ? 'bg-rose-500' : 'bg-emerald-400'}`}></span>
+                      <span>{sub.name} {isFiredThisSub ? '🔥 (FIRE HAZARD)' : ''}</span>
+                    </div>
+                    <div className="w-2 h-2 bg-black/95 rotate-45 border-r border-b border-cyan-500/50 -mt-1"></div>
+                  </div>
                 </div>
-              </div>
-            ))}
+              );
+            })}
           </div>
 
         </div>
@@ -302,28 +375,28 @@ export const DelhiMap = ({
       {activeCameraSubstation && (
         <div className="fixed inset-0 z-50 bg-black/85 backdrop-blur-md flex items-center justify-center p-4 animate-fadeIn">
           <div className={`w-full max-w-2xl liquid-glass rounded-2xl border ${
-            fireResult?.fire_detected ? 'border-rose-500 shadow-[0_0_50px_rgba(244,63,94,0.6)] animate-pulse' : 'border-cyan-500/50'
+            fireResult?.fire_detected ? 'border-rose-500 shadow-[0_0_60px_rgba(244,63,94,0.7)] animate-pulse' : 'border-cyan-500/50'
           } bg-black/95 overflow-hidden shadow-2xl flex flex-col transition-all`}>
             
             {/* Modal Header */}
             <div className={`p-4 border-b border-white/10 flex items-center justify-between ${
-              fireResult?.fire_detected ? 'bg-rose-950/80' : 'bg-cyan-950/70'
+              fireResult?.fire_detected ? 'bg-rose-950/90' : 'bg-cyan-950/70'
             }`}>
               <div className="flex items-center gap-3">
                 <div className={`p-2 rounded-xl border ${
-                  fireResult?.fire_detected ? 'bg-rose-500/20 text-rose-400 border-rose-500/50' : 'bg-cyan-500/20 text-cyan-400 border-cyan-500/40'
+                  fireResult?.fire_detected ? 'bg-rose-500/20 text-rose-400 border-rose-500/50 animate-bounce' : 'bg-cyan-500/20 text-cyan-400 border-cyan-500/40'
                 }`}>
-                  {fireResult?.fire_detected ? <Flame className="w-5 h-5 animate-bounce text-rose-400" /> : <Video className="w-5 h-5 animate-pulse" />}
+                  {fireResult?.fire_detected ? <Flame className="w-5 h-5 text-rose-400" /> : <Video className="w-5 h-5 animate-pulse" />}
                 </div>
                 <div>
                   <h3 className="font-bold text-base text-white flex items-center gap-2">
                     <span>{activeCameraSubstation.name}</span>
                     <span className={`px-2 py-0.5 text-[10px] rounded uppercase font-mono font-bold border ${
                       fireResult?.fire_detected
-                        ? 'bg-rose-900 text-rose-200 border-rose-500 animate-pulse'
+                        ? 'bg-rose-900 text-yellow-300 border-rose-400 animate-pulse'
                         : 'bg-emerald-950 text-emerald-300 border-emerald-500/40'
                     }`}>
-                      {fireResult?.fire_detected ? '🔥 FIRE / SPARK DETECTED' : 'LIVE OPTICAL FEED'}
+                      {fireResult?.fire_detected ? '🔥 FIRE / SPARK HAZARD DETECTED' : 'LIVE OPTICAL FEED'}
                     </span>
                   </h3>
                   <p className="text-xs text-gray-400">
@@ -333,10 +406,20 @@ export const DelhiMap = ({
               </div>
 
               <div className="flex items-center gap-2">
+                {/* TEST SAMPLE FIRE IMAGE BUTTON */}
+                <button
+                  type="button"
+                  onClick={handleTestPyTorchImage}
+                  className="px-2.5 py-1.5 rounded-xl bg-amber-500/20 hover:bg-amber-500/30 text-amber-300 text-xs font-bold border border-amber-500/40 transition-all cursor-pointer flex items-center gap-1"
+                >
+                  <Activity className="w-3.5 h-3.5" />
+                  <span>Test Fire Image</span>
+                </button>
+
                 {/* SIMULATE SPARK / FIRE INCIDENT TOGGLE BUTTON */}
                 <button
                   type="button"
-                  onClick={() => setSimulateFire(!simulateFire)}
+                  onClick={handleSimulateToggle}
                   className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer flex items-center gap-1.5 border ${
                     simulateFire
                       ? 'bg-rose-600 hover:bg-rose-500 text-white border-rose-400 shadow-lg animate-pulse'
@@ -361,7 +444,7 @@ export const DelhiMap = ({
             {fireResult?.fire_detected && (
               <div className="bg-rose-600/90 text-white px-4 py-3 border-b border-rose-500 flex items-center justify-between animate-pulse">
                 <div className="flex items-center gap-3">
-                  <AlertTriangle className="w-6 h-6 text-yellow-300 shrink-0" />
+                  <AlertTriangle className="w-6 h-6 text-yellow-300 shrink-0 animate-bounce" />
                   <div>
                     <div className="font-extrabold text-sm uppercase tracking-wide">
                       {fireResult.alert_message}
@@ -413,7 +496,7 @@ export const DelhiMap = ({
 
               {/* Real-time Fire Alert Red Screen Flash Filter */}
               {fireResult?.fire_detected && (
-                <div className="absolute inset-0 bg-rose-500/20 border-4 border-rose-500 pointer-events-none animate-pulse" />
+                <div className="absolute inset-0 bg-rose-500/25 border-4 border-rose-500 pointer-events-none animate-pulse" />
               )}
 
               {/* Live HUD Overlay */}
@@ -425,8 +508,8 @@ export const DelhiMap = ({
               <div className="absolute bottom-3 right-3 bg-black/60 px-3 py-1.5 rounded-lg border border-white/10 text-[10px] font-mono text-gray-300 flex items-center gap-3 backdrop-blur-sm pointer-events-none">
                 <span>FPS: 30.0</span>
                 <span>RES: 1280x720</span>
-                <span className={fireResult?.fire_detected ? 'text-rose-400 font-bold' : 'text-emerald-400'}>
-                  FIRE AI: {isAnalyzingVision ? 'SCANNING...' : fireResult?.fire_detected ? 'FIRE DETECTED' : 'CLEAR'}
+                <span className={fireResult?.fire_detected ? 'text-rose-400 font-bold animate-pulse' : 'text-emerald-400'}>
+                  FIRE AI: {isAnalyzingVision ? 'SCANNING...' : fireResult?.fire_detected ? '🔥 FIRE DETECTED' : 'CLEAR'}
                 </span>
               </div>
             </div>

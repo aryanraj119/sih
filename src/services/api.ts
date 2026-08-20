@@ -23,10 +23,8 @@ export const getLiveDelhiGridStatus = () => {
   };
 };
 
-// Generate realistic demand forecasting curves for 3 horizons
 export const getForecastData = (horizon: ForecastHorizon): DemandDataPoint[] => {
   if (horizon === 'short_term') {
-    // 15-minute resolution for next 6 hours (24 points)
     const points: DemandDataPoint[] = [];
     const baseMW = 6200;
     const now = new Date();
@@ -34,7 +32,6 @@ export const getForecastData = (horizon: ForecastHorizon): DemandDataPoint[] => 
     for (let i = 0; i < 24; i++) {
       const stepTime = new Date(now.getTime() + i * 15 * 60 * 1000);
       const timeStr = stepTime.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-      
       const rampFactor = Math.sin((i / 24) * Math.PI) * 850;
       const noise = (Math.random() - 0.5) * 40;
       const pred = Math.round(baseMW + rampFactor + noise);
@@ -99,7 +96,6 @@ export const getForecastData = (horizon: ForecastHorizon): DemandDataPoint[] => 
   });
 };
 
-// DISCOM Zonal Grid Data for Delhi
 export const getDiscomData = (): DiscomData[] => {
   return [
     {
@@ -163,13 +159,10 @@ export const getDiscomData = (): DiscomData[] => {
   ];
 };
 
-// 24-Hour Duck Curve Data
 export const getDuckCurveData = (): DuckCurveDataPoint[] => {
   const points: DuckCurveDataPoint[] = [];
-  
   for (let hour = 0; hour < 24; hour++) {
     const timeStr = `${hour.toString().padStart(2, '0')}:00`;
-    
     let gross = 4800;
     if (hour >= 6 && hour <= 10) gross += (hour - 6) * 350;
     else if (hour > 10 && hour <= 16) gross += 1400 + Math.sin((hour - 10) / 6 * Math.PI) * 400;
@@ -196,11 +189,9 @@ export const getDuckCurveData = (): DuckCurveDataPoint[] => {
       rampRateMWPerMin: rampRate,
     });
   }
-  
   return points;
 };
 
-// Real-time AI Scenario Simulator calculation
 export const runScenarioSimulation = (inputs: ScenarioInputs): DemandDataPoint[] => {
   const baseline = getForecastData('short_term');
   const tempVar = inputs.tempAnomalyC ?? inputs.tempAnomaly ?? 0;
@@ -222,7 +213,6 @@ export const runScenarioSimulation = (inputs: ScenarioInputs): DemandDataPoint[]
   });
 };
 
-// OpenSTEF Telemetry & Model Performance Metrics
 export const getModelTelemetry = (): ModelTelemetry => {
   return {
     mae: 84.2,
